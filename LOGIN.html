@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CyberSentinel — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ─── HUMANISED PALETTE ─────────────────────────────────────── */
+:root {
+  --cream:       #FAF7F2;
+  --parchment:   #F2EDE4;
+  --warm-white:  #FFFDF9;
+  --sand:        #E8DFD0;
+  --sand-dark:   #D4C9B6;
+
+  --bark:        #3D2B1F;
+  --espresso:    #2A1A12;
+  --mahogany:    #5C3D2E;
+  --walnut:      #7A5C48;
+  --caramel:     #A67C5B;
+
+  --terracotta:  #C96A45;
+  --rust:        #B8502A;
+  --ember:       #E07B39;
+  --amber:       #D4A043;
+  --gold:        #C8922A;
+
+  --sage:        #6B8F71;
+  --forest:      #3D6B52;
+  --moss:        #8BA888;
+  --olive:       #8A9460;
+
+  --slate:       #5C7080;
+  --steel:       #7A96A8;
+  --dusk:        #4A6070;
+
+  --danger:      #C0392B;
+  --warning:     #D4881A;
+  --success:     #2D7A4A;
+  --info:        #2E6E8A;
+
+  --text-primary:   #2A1A12;
+  --text-secondary: #5C4A3A;
+  --text-muted:     #9A8070;
+  --text-light:     #B8A898;
+
+  --border:      #D8CFC4;
+  --border-soft: #E8E0D5;
+  --shadow-warm: 0 4px 24px rgba(61,43,31,0.10);
+  --shadow-card: 0 2px 12px rgba(61,43,31,0.08);
+  --radius:      14px;
+  --radius-sm:   8px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--parchment);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ─── SIDEBAR ───────────────────────────────────────────────── */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--espresso);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 0 0 24px;
+}
+.sidebar-brand {
+  padding: 28px 24px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 8px;
+}
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.brand-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--terracotta), var(--ember));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(201,106,69,0.4);
+}
+.brand-text { display: flex; flex-direction: column; }
+.brand-name {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--cream);
+  line-height: 1.2;
+  letter-spacing: 0.3px;
+}
+.brand-tagline {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.sidebar-section {
+  padding: 0 12px;
+  margin-top: 4px;
+}
+.sidebar-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.28);
+  padding: 16px 12px 6px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  position: relative;
+  text-decoration: none;
+}
+.nav-item:hover {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.85);
+}
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(201,106,69,0.25), rgba(224,123,57,0.15));
+  color: var(--ember);
+  border: 1px solid rgba(201,106,69,0.2);
+}
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--terracotta);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  min-width: 20px;
+  text-align: center;
+}
+.nav-badge.green { background: var(--forest); }
+.nav-badge.amber { background: var(--gold); }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 12px 0;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.user-card:hover { background: rgba(255,255,255,0.08); }
+.user-avatar {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--terracotta), var(--amber));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 13px; font-weight: 600; color: var(--cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 11px; color: rgba(255,255,255,0.35); }
+
+/* ─── MAIN ──────────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── TOPBAR ────────────────────────────────────────────────── */
+.topbar {
+  background: var(--warm-white);
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0 32px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 8px rgba(61,43,31,0.06);
+}
+.topbar-title {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--bark);
+  flex: 1;
+}
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  width: 280px;
+  transition: all 0.2s;
+}
+.search-bar:focus-within {
+  border-color: var(--terracotta);
+  box-shadow: 0 0 0 3px rgba(201,106,69,0.12);
+  background: var(--warm-white);
+}
+.search-bar input {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+}
+.search-bar input::placeholder { color: var(--text-light); }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  width: 38px; height: 38px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--warm-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  position: relative;
+  color: var(--text-secondary);
+}
+.icon-btn:hover { background: var(--parchment); border-color: var(--sand-dark); }
+.notif-dot {
+  position: absolute;
+  top: 7px; right: 7px;
+  width: 7px; height: 7px;
+  background: var(--danger);
+  border-radius: 50%;
+  border: 1.5px solid var(--warm-white);
+}
+
+/* ─── CONTENT ───────────────────────────────────────────────── */
+.content {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+/* ─── ALERT BANNER ──────────────────────────────────────────── */
+.alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: linear-gradient(135deg, #FEF3E8, #FDE8D8);
+  border: 1px solid rgba(201,106,69,0.3);
+  border-left: 4px solid var(--terracotta);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 28px;
+  animation: slideDown 0.5s ease both;
+}
+@keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+.alert-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+.alert-content { flex: 1; }
+.alert-title { font-weight: 700; font-size: 14px; color: var(--rust); margin-bottom: 2px; }
+.alert-text { font-size: 13px; color: var(--mahogany); line-height: 1.5; }
+.alert-close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(201,106,69,0.12);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--terracotta);
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.alert-close:hover { background: rgba(201,106,69,0.2); }
+
+/* ─── SECTION HEADER ────────────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.section-title {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--bark);
+}
+.section-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--terracotta), var(--ember));
+  color: white;
+  box-shadow: 0 3px 12px rgba(201,106,69,0.35);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(201,106,69,0.45); }
+.btn-secondary {
+  background: var(--warm-white);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--parchment); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* ─── KPI GRID ──────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+  animation: fadeUp 0.5s 0.1s ease both;
+}
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+.kpi-card {
+  background: var(--warm-white);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 22px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-card);
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-warm); }
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.kpi-card.danger::before { background: linear-gradient(90deg, var(--danger), var(--terracotta)); }
+.kpi-card.warning::before { background: linear-gradient(90deg, var(--warning), var(--amber)); }
+.kpi-card.success::before { background: linear-gradient(90deg, var(--forest), var(--sage)); }
+.kpi-card.info::before { background: linear-gradient(90deg, var(--info), var(--steel)); }
+
+.kpi-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+.kpi-icon {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.kpi-icon.danger { background: #FEE8E5; }
+.kpi-icon.warning { background: #FEF3DC; }
+.kpi-icon.success { background: #E5F5EC; }
+.kpi-icon.info { background: #E3EEF4; }
+.kpi-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+.kpi-trend.up { background: #FEE8E5; color: var(--danger); }
+.kpi-trend.down { background: #E5F5EC; color: var(--forest); }
+.kpi-trend.neutral { background: var(--parchment); color: var(--text-muted); }
+.kpi-value {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--bark);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.kpi-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+.kpi-sub { font-size: 11px; color: var(--text-light); margin-top: 6px; }
+
+/* ─── TWO COL LAYOUT ────────────────────────────────────────── */
+.two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 28px; }
+
+/* ─── CARD ──────────────────────────────────────────────────── */
+.card {
+  background: var(--warm-white);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  animation: fadeUp 0.5s 0.2s ease both;
+}
+.card-header {
+  padding: 20px 22px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.card-title { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; color: var(--bark); }
+.card-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.card-body { padding: 16px 22px 22px; }
+
+/* ─── BAR CHART ─────────────────────────────────────────────── */
+.bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
+.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.bar-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; width: 100%; }
+.bar {
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  min-height: 4px;
+  transition: opacity 0.2s;
+  position: relative;
+}
+.bar:hover { opacity: 0.8; }
+.bar-label { font-size: 10px; color: var(--text-light); text-align: center; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
+
+/* ─── THREAT FEED ───────────────────────────────────────────── */
+.threat-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.15s;
+  cursor: pointer;
+  margin: 0 -22px;
+  padding-left: 22px;
+  padding-right: 22px;
+}
+.threat-item:last-child { border-bottom: none; }
+.threat-item:hover { background: var(--parchment); }
+.threat-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.threat-dot.critical { background: var(--danger); box-shadow: 0 0 6px rgba(192,57,43,0.5); }
+.threat-dot.high { background: var(--terracotta); box-shadow: 0 0 6px rgba(201,106,69,0.5); }
+.threat-dot.medium { background: var(--amber); box-shadow: 0 0 6px rgba(212,160,67,0.5); }
+.threat-dot.low { background: var(--sage); }
+.threat-main { flex: 1; min-width: 0; }
+.threat-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.threat-meta { font-size: 11px; color: var(--text-muted); }
+.threat-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-critical { background: #FEE8E5; color: var(--danger); }
+.badge-high { background: #FEF0E8; color: var(--rust); }
+.badge-medium { background: #FEF8E5; color: var(--gold); }
+.badge-low { background: #EBF5ED; color: var(--forest); }
+.badge-info { background: #E3EEF4; color: var(--info); }
+.badge-open { background: #FEF3DC; color: var(--warning); }
+.badge-resolved { background: #E5F5EC; color: var(--forest); }
+
+/* ─── RISK GAUGE ────────────────────────────────────────────── */
+.risk-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+}
+.gauge-circle {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--terracotta) 0deg,
+    var(--ember) 100deg,
+    var(--amber) 160deg,
+    var(--border) 160deg
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 20px rgba(201,106,69,0.2);
+}
+.gauge-inner {
+  width: 88px; height: 88px;
+  background: var(--warm-white);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.gauge-val { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: var(--bark); line-height: 1; }
+.gauge-unit { font-size: 10px; color: var(--text-muted); }
+.gauge-label { font-size: 13px; font-weight: 600; color: var(--terracotta); margin-bottom: 8px; }
+.gauge-desc { font-size: 12px; color: var(--text-muted); text-align: center; }
+.risk-breakdown { width: 100%; margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.risk-row { display: flex; align-items: center; gap: 10px; }
+.risk-row-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; width: 90px; flex-shrink: 0; }
+.risk-bar-track { flex: 1; height: 6px; background: var(--sand); border-radius: 3px; overflow: hidden; }
+.risk-bar-fill { height: 100%; border-radius: 3px; }
+.risk-row-pct { font-size: 11px; font-weight: 600; color: var(--text-muted); width: 30px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+/* ─── COMPLAINT PORTAL ──────────────────────────────────────── */
+.portal-form { display: flex; flex-direction: column; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.3px; }
+.form-input, .form-select, .form-textarea {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  outline: none;
+  transition: all 0.18s;
+  width: 100%;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--terracotta);
+  background: var(--warm-white);
+  box-shadow: 0 0 0 3px rgba(201,106,69,0.1);
+}
+.form-textarea { resize: vertical; min-height: 80px; }
+.ai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #FEF0E8, #FEEBD8);
+  border: 1px solid rgba(201,106,69,0.25);
+  color: var(--rust);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  width: fit-content;
+}
+
+/* ─── INCIDENT TABLE ────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 2px solid var(--border-soft); }
+th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 0 12px 12px 0;
+  white-space: nowrap;
+}
+tbody tr {
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.15s;
+  cursor: pointer;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--parchment); }
+td {
+  padding: 13px 12px 13px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); }
+
+/* ─── ACTIVITY FEED ─────────────────────────────────────────── */
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+}
+.act-a1 { background: linear-gradient(135deg, var(--terracotta), var(--ember)); }
+.act-a2 { background: linear-gradient(135deg, var(--forest), var(--sage)); }
+.act-a3 { background: linear-gradient(135deg, var(--info), var(--steel)); }
+.act-a4 { background: linear-gradient(135deg, var(--gold), var(--amber)); }
+.act-a5 { background: linear-gradient(135deg, var(--mahogany), var(--walnut)); }
+.activity-body { flex: 1; min-width: 0; }
+.activity-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.activity-text strong { color: var(--text-primary); font-weight: 600; }
+.activity-time { font-size: 11px; color: var(--text-light); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+/* ─── MODULE CARDS ──────────────────────────────────────────── */
+.module-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+.module-card {
+  background: var(--warm-white);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 22px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+  animation: fadeUp 0.5s 0.3s ease both;
+}
+.module-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-warm); border-color: var(--sand-dark); }
+.module-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.module-card:hover::after { opacity: 1; }
+.mc-t { background: linear-gradient(90deg, var(--terracotta), var(--ember)); }
+.mc-f { background: linear-gradient(90deg, var(--forest), var(--sage)); }
+.mc-i { background: linear-gradient(90deg, var(--info), var(--steel)); }
+.mc-g { background: linear-gradient(90deg, var(--gold), var(--amber)); }
+.mc-m { background: linear-gradient(90deg, var(--mahogany), var(--walnut)); }
+.mc-s { background: linear-gradient(90deg, var(--slate), var(--steel)); }
+.module-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+.module-title { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; color: var(--bark); margin-bottom: 5px; }
+.module-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+.module-stat {
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.module-stat span { color: var(--terracotta); font-weight: 600; }
+
+/* ─── STATUS PILL ───────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.pill::before { content: '●'; font-size: 8px; }
+.pill-live { background: #E5F5EC; color: var(--forest); }
+.pill-live::before { color: var(--forest); animation: blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.pill-idle { background: var(--parchment); color: var(--text-muted); }
+.pill-warn { background: #FEF3DC; color: var(--warning); }
+
+/* ─── PROGRESS ──────────────────────────────────────────────── */
+.progress-track { height: 8px; background: var(--sand); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+
+/* ─── SCROLLBAR ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--sand-dark); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--caramel); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .kpi-grid { grid-template-columns: repeat(2,1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .module-grid { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .three-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <a href="#" class="brand-logo">
+      <div class="brand-icon">🛡</div>
+      <div class="brand-text">
+        <span class="brand-name">CyberSentinel</span>
+        <span class="brand-tagline">Neural Defense OS</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Intelligence</div>
+    <a href="#" class="nav-item active">
+      <span class="nav-icon">⚡</span> Threat Overview
+      <span class="nav-badge">12</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🌐</span> Dark Web Monitor
+      <span class="nav-badge amber">3</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🧠</span> AI Classifier
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">📡</span> Threat Intel Feed
+      <span class="nav-badge green">Live</span>
+    </a>
+
+    <div class="sidebar-section-label">Response</div>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🤖</span> Auto-Remediation
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🔬</span> Forensic Suite
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">📋</span> Incident Reports
+      <span class="nav-badge">5</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🎯</span> SOAR Playbooks
+    </a>
+
+    <div class="sidebar-section-label">Analytics</div>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">📊</span> Risk Dashboard
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🗺</span> Threat Map
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">📈</span> Behavioral Analysis
+    </a>
+
+    <div class="sidebar-section-label">Citizen Portal</div>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">💬</span> File Complaint
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">📁</span> My Cases
+    </a>
+
+    <div class="sidebar-section-label">Admin</div>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">👥</span> IAM Console
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">⚙</span> Settings
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">📜</span> Audit Logs
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar">SK</div>
+      <div class="user-info">
+        <div class="user-name">Suresh Kumar</div>
+        <div class="user-role">Senior Analyst</div>
+      </div>
+      <span style="color:rgba(255,255,255,0.3);font-size:12px;">⋮</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-title">Threat Operations Center</div>
+    <div class="search-bar">
+      <span style="color:var(--text-light);font-size:14px;">🔍</span>
+      <input type="text" placeholder="Search incidents, IOCs, reports…" />
+    </div>
+    <div class="topbar-actions">
+      <div class="pill pill-live">System Live</div>
+      <button class="icon-btn">🔔 <div class="notif-dot"></div></button>
+      <button class="icon-btn">⚙</button>
+      <button class="icon-btn">❓</button>
+      <div id="authContainer" style="display:flex;gap:12px;align-items:center;">
+        <button id="googleSignInBtn" class="btn btn-primary btn-sm" style="padding:8px 14px;gap:6px;display:none;">🔐 Sign In with Google</button>
+        <div id="userInfoDiv" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:rgba(255,255,255,0.05);border-radius:8px;font-size:12px;">
+          <img id="userProfilePic" style="width:28px;height:28px;border-radius:50%;" />
+          <span id="userEmailSpan" style="color:rgba(255,255,255,0.7);"></span>
+          <button id="googleSignOutBtn" class="btn btn-secondary btn-sm" style="padding:6px 10px;font-size:11px;">Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ALERT -->
+    <div class="alert-banner">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-content">
+        <div class="alert-title">Critical Alert — Ransomware Precursor Detected</div>
+        <div class="alert-text">Lateral movement signatures observed on subnet 192.168.10.0/24. AI confidence 96.2%. Auto-isolation playbook triggered. <strong>Action required within 15 minutes.</strong></div>
+      </div>
+      <button class="alert-close" onclick="this.parentElement.style.display='none'">✕</button>
+    </div>
+
+    <!-- KPI GRID -->
+    <div class="kpi-grid">
+      <div class="kpi-card danger">
+        <div class="kpi-top">
+          <div class="kpi-icon danger">🚨</div>
+          <div class="kpi-trend up">↑ 8</div>
+        </div>
+        <div class="kpi-value">47</div>
+        <div class="kpi-label">Active Threats</div>
+        <div class="kpi-sub">12 critical · 23 high · 12 medium</div>
+      </div>
+      <div class="kpi-card warning">
+        <div class="kpi-top">
+          <div class="kpi-icon warning">📂</div>
+          <div class="kpi-trend neutral">→ 0</div>
+        </div>
+        <div class="kpi-value">134</div>
+        <div class="kpi-label">Open Incidents</div>
+        <div class="kpi-sub">48 assigned · 86 pending triage</div>
+      </div>
+      <div class="kpi-card success">
+        <div class="kpi-top">
+          <div class="kpi-icon success">✅</div>
+          <div class="kpi-trend down">↓ 2%</div>
+        </div>
+        <div class="kpi-value">98.1%</div>
+        <div class="kpi-label">Systems Healthy</div>
+        <div class="kpi-sub">3 hosts quarantined today</div>
+      </div>
+      <div class="kpi-card info">
+        <div class="kpi-top">
+          <div class="kpi-icon info">🧬</div>
+          <div class="kpi-trend down">↑ 3.2%</div>
+        </div>
+        <div class="kpi-value">4,812</div>
+        <div class="kpi-label">Events Analysed</div>
+        <div class="kpi-sub">Real-time · Last 24 hours</div>
+      </div>
+    </div>
+
+    <!-- AI MODULES -->
+    <div class="section-header">
+      <div>
+        <div class="section-title">AI-Powered Modules</div>
+        <div class="section-sub">Click any module to enter its workspace</div>
+      </div>
+    </div>
+    <div class="module-grid">
+      <div class="module-card mc-t">
+        <span class="module-icon">🧠</span>
+        <div class="module-title">NLP Threat Classifier</div>
+        <div class="module-desc">Converts unstructured complaints into 80+ structured threat taxonomies using fine-tuned BERT.</div>
+        <div class="module-stat">⚡ <span>1,243</span> classified today</div>
+      </div>
+      <div class="module-card mc-f">
+        <span class="module-icon">🌑</span>
+        <div class="module-title">Dark Web Monitor</div>
+        <div class="module-desc">Crawls Tor markets, paste sites and ransomware portals for stolen credentials and IOCs.</div>
+        <div class="module-stat">🔴 <span>3 new leaks</span> detected</div>
+      </div>
+      <div class="module-card mc-i">
+        <span class="module-icon">🤖</span>
+        <div class="module-title">Auto-Remediation Bot</div>
+        <div class="module-desc">AI agent executes pre-authorised playbooks — isolating hosts, revoking tokens and blocking IPs autonomously.</div>
+        <div class="module-stat">🟢 <span>7 actions</span> taken today</div>
+      </div>
+      <div class="module-card mc-g">
+        <span class="module-icon">🔮</span>
+        <div class="module-title">Predictive Forecasting</div>
+        <div class="module-desc">Time-series transformer predicts attack campaigns 6–72 hours before they surface on your network.</div>
+        <div class="module-stat">📈 <span>2 warnings</span> issued</div>
+      </div>
+      <div class="module-card mc-m">
+        <span class="module-icon">🔬</span>
+        <div class="module-title">Digital Forensics Suite</div>
+        <div class="module-desc">Memory forensics, PCAP analysis and disk imaging with cryptographic evidence chain generation.</div>
+        <div class="module-stat">🔍 <span>1 case</span> in analysis</div>
+      </div>
+      <div class="module-card mc-s">
+        <span class="module-icon">🎓</span>
+        <div class="module-title">Awareness Engine</div>
+        <div class="module-desc">Adaptive phishing simulations and microlearning tailored to each user's behavioural risk profile.</div>
+        <div class="module-stat">👥 <span>89 users</span> enrolled</div>
+      </div>
+    </div>
+
+    <!-- CHART + RISK -->
+    <div class="two-col">
+      <!-- THREAT VOLUME CHART -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Threat Volume — Last 12 Hours</div>
+            <div class="card-sub">Events per hour across all detection layers</div>
+          </div>
+          <button class="btn btn-secondary btn-sm">Export ↗</button>
+        </div>
+        <div class="card-body">
+          <div class="bar-chart">
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:38%;background:linear-gradient(to top,#B8502A,#E07B39)"></div></div>
+              <div class="bar-label">12am</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:22%;background:linear-gradient(to top,#B8502A,#E07B39)"></div></div>
+              <div class="bar-label">2am</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:15%;background:linear-gradient(to top,#B8502A,#E07B39)"></div></div>
+              <div class="bar-label">4am</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:28%;background:linear-gradient(to top,#B8502A,#E07B39)"></div></div>
+              <div class="bar-label">6am</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:55%;background:linear-gradient(to top,#C8922A,#D4A043)"></div></div>
+              <div class="bar-label">8am</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:72%;background:linear-gradient(to top,#C0392B,#E07B39)"></div></div>
+              <div class="bar-label">10am</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:90%;background:linear-gradient(to top,#C0392B,#E07B39)"></div></div>
+              <div class="bar-label">12pm</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:65%;background:linear-gradient(to top,#C8922A,#D4A043)"></div></div>
+              <div class="bar-label">2pm</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:78%;background:linear-gradient(to top,#C0392B,#E07B39)"></div></div>
+              <div class="bar-label">4pm</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:48%;background:linear-gradient(to top,#B8502A,#E07B39)"></div></div>
+              <div class="bar-label">6pm</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:60%;background:linear-gradient(to top,#C8922A,#D4A043)"></div></div>
+              <div class="bar-label">8pm</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-col"><div class="bar" style="height:42%;background:linear-gradient(to top,#B8502A,#E07B39)"></div></div>
+              <div class="bar-label">10pm</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:16px;">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)"><div style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#C0392B,#E07B39)"></div>Critical/High</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)"><div style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#C8922A,#D4A043)"></div>Medium</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RISK GAUGE -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Organisation Risk Score</div>
+            <div class="card-sub">Behavioural risk engine v2.4</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="risk-gauge">
+            <div class="gauge-circle">
+              <div class="gauge-inner">
+                <div class="gauge-val">68</div>
+                <div class="gauge-unit">/ 100</div>
+              </div>
+            </div>
+            <div class="gauge-label">⚠ ELEVATED RISK</div>
+            <div class="gauge-desc">Above baseline — immediate review of open critical incidents recommended.</div>
+          </div>
+          <div class="risk-breakdown">
+            <div class="risk-row">
+              <div class="risk-row-label">Phishing</div>
+              <div class="risk-bar-track"><div class="risk-bar-fill" style="width:78%;background:var(--terracotta)"></div></div>
+              <div class="risk-row-pct">78%</div>
+            </div>
+            <div class="risk-row">
+              <div class="risk-row-label">Malware</div>
+              <div class="risk-bar-track"><div class="risk-bar-fill" style="width:45%;background:var(--amber)"></div></div>
+              <div class="risk-row-pct">45%</div>
+            </div>
+            <div class="risk-row">
+              <div class="risk-row-label">Insider</div>
+              <div class="risk-bar-track"><div class="risk-bar-fill" style="width:32%;background:var(--sage)"></div></div>
+              <div class="risk-row-pct">32%</div>
+            </div>
+            <div class="risk-row">
+              <div class="risk-row-label">Ransomware</div>
+              <div class="risk-bar-track"><div class="risk-bar-fill" style="width:61%;background:var(--rust)"></div></div>
+              <div class="risk-row-pct">61%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECENT THREATS + ACTIVITY -->
+    <div class="two-col">
+      <!-- LIVE THREAT FEED -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Live Threat Feed</div>
+            <div class="card-sub">Real-time alerts from all detection layers</div>
+          </div>
+          <div class="pill pill-live">Live</div>
+        </div>
+        <div class="card-body" style="padding-top:8px;">
+          <div class="threat-item">
+            <div class="threat-dot critical"></div>
+            <div class="threat-main">
+              <div class="threat-title">APT lateral movement — suspicious SMB relay</div>
+              <div class="threat-meta">192.168.10.45 → 192.168.10.12 · AI Classifier · 2 min ago</div>
+            </div>
+            <span class="threat-badge badge-critical">Critical</span>
+          </div>
+          <div class="threat-item">
+            <div class="threat-dot high"></div>
+            <div class="threat-main">
+              <div class="threat-title">Dark web credential leak — 47 accounts exposed</div>
+              <div class="threat-meta">Source: RaidForums mirror · Dark Web Crawler · 11 min ago</div>
+            </div>
+            <span class="threat-badge badge-high">High</span>
+          </div>
+          <div class="threat-item">
+            <div class="threat-dot medium"></div>
+            <div class="threat-main">
+              <div class="threat-title">Phishing campaign targeting finance department</div>
+              <div class="threat-meta">14 emails blocked · NLP Classifier · 22 min ago</div>
+            </div>
+            <span class="threat-badge badge-medium">Medium</span>
+          </div>
+          <div class="threat-item">
+            <div class="threat-dot high"></div>
+            <div class="threat-main">
+              <div class="threat-title">Malware dropper detected — PowerShell stage</div>
+              <div class="threat-meta">Endpoint: WS-042 · Malware Genome · 35 min ago</div>
+            </div>
+            <span class="threat-badge badge-high">High</span>
+          </div>
+          <div class="threat-item">
+            <div class="threat-dot medium"></div>
+            <div class="threat-main">
+              <div class="threat-title">Unusual login pattern — 3 countries in 2 hours</div>
+              <div class="threat-meta">User: priya.m@org.in · Behavioural UEBA · 51 min ago</div>
+            </div>
+            <span class="threat-badge badge-medium">Medium</span>
+          </div>
+          <div class="threat-item">
+            <div class="threat-dot low"></div>
+            <div class="threat-main">
+              <div class="threat-title">Port scan detected from external IP</div>
+              <div class="threat-meta">103.87.12.44 · IDS Sensor · 1 hr ago</div>
+            </div>
+            <span class="threat-badge badge-low">Low</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY FEED -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Team Activity</div>
+            <div class="card-sub">Analyst actions and system events</div>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:8px;">
+          <div class="activity-item">
+            <div class="activity-avatar act-a1">SK</div>
+            <div class="activity-body">
+              <div class="activity-text"><strong>Suresh Kumar</strong> escalated INC-2847 to Critical and triggered isolation playbook</div>
+              <div class="activity-time">2 min ago</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-avatar act-a2">🤖</div>
+            <div class="activity-body">
+              <div class="activity-text"><strong>AI Remediation Bot</strong> auto-quarantined host WS-042 and revoked 3 active sessions</div>
+              <div class="activity-time">8 min ago</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-avatar act-a3">PM</div>
+            <div class="activity-body">
+              <div class="activity-text"><strong>Priya Menon</strong> submitted citizen complaint CNF-2024-1923 via NLP portal — classified as UPI fraud</div>
+              <div class="activity-time">14 min ago</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-avatar act-a4">🧠</div>
+            <div class="activity-body">
+              <div class="activity-text"><strong>AI Classifier</strong> processed 312 complaint texts, 98.1% accuracy — 4 escalated to human review</div>
+              <div class="activity-time">30 min ago</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-avatar act-a5">AR</div>
+            <div class="activity-body">
+              <div class="activity-text"><strong>Arun Raj</strong> completed forensic analysis on INC-2830, evidence vault sealed with hash proof</div>
+              <div class="activity-time">1 hr ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INCIDENT TABLE -->
+    <div class="card" style="margin-bottom:28px;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Recent Incidents</div>
+          <div class="card-sub">Showing 6 of 134 open incidents</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary btn-sm">Filter ▾</button>
+          <button class="btn btn-primary btn-sm">+ New Incident</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Incident ID</th>
+                <th>Type</th>
+                <th>Severity</th>
+                <th>Source</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">INC-2847</td>
+                <td>APT Lateral Movement</td>
+                <td><span class="threat-badge badge-critical">Critical</span></td>
+                <td>IDS / AI Classifier</td>
+                <td>Suresh Kumar</td>
+                <td><span class="threat-badge badge-open">Active</span></td>
+                <td class="mono">Today 09:14</td>
+              </tr>
+              <tr>
+                <td class="mono">INC-2846</td>
+                <td>Credential Leak</td>
+                <td><span class="threat-badge badge-high">High</span></td>
+                <td>Dark Web Monitor</td>
+                <td>Arun Raj</td>
+                <td><span class="threat-badge badge-open">Triage</span></td>
+                <td class="mono">Today 08:58</td>
+              </tr>
+              <tr>
+                <td class="mono">INC-2845</td>
+                <td>Phishing Campaign</td>
+                <td><span class="threat-badge badge-medium">Medium</span></td>
+                <td>Email Gateway</td>
+                <td>Divya Nair</td>
+                <td><span class="threat-badge badge-open">Active</span></td>
+                <td class="mono">Today 08:31</td>
+              </tr>
+              <tr>
+                <td class="mono">INC-2844</td>
+                <td>Malware Dropper</td>
+                <td><span class="threat-badge badge-high">High</span></td>
+                <td>Endpoint Agent</td>
+                <td>Karthik V</td>
+                <td><span class="threat-badge badge-info">Contained</span></td>
+                <td class="mono">Today 07:45</td>
+              </tr>
+              <tr>
+                <td class="mono">INC-2843</td>
+                <td>Insider Anomaly</td>
+                <td><span class="threat-badge badge-medium">Medium</span></td>
+                <td>UEBA Engine</td>
+                <td>Priya Menon</td>
+                <td><span class="threat-badge badge-open">Under Review</span></td>
+                <td class="mono">Today 07:02</td>
+              </tr>
+              <tr>
+                <td class="mono">INC-2830</td>
+                <td>Data Exfiltration</td>
+                <td><span class="threat-badge badge-critical">Critical</span></td>
+                <td>DLP / SIEM</td>
+                <td>Arun Raj</td>
+                <td><span class="threat-badge badge-resolved">Resolved</span></td>
+                <td class="mono">Yesterday</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CITIZEN COMPLAINT PORTAL -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Citizen Complaint Portal</div>
+            <div class="card-sub">Describe your experience in plain language — our AI handles the rest</div>
+          </div>
+          <div class="ai-chip">🧠 AI-Assisted</div>
+        </div>
+        <div class="card-body">
+            <form id="complaintForm" class="portal-form">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                  <label class="form-label">Full Name</label>
+                  <input id="fullName" class="form-input" type="text" placeholder="Your full name" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Mobile Number</label>
+                  <input id="mobileNumber" class="form-input" type="text" placeholder="+91 XXXXX XXXXX" required />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input id="emailAddress" class="form-input" type="email" placeholder="you@example.com" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Describe What Happened</label>
+                <textarea id="complaintDescription" class="form-textarea" placeholder="Tell us in your own words — e.g. I received a call asking for my OTP and ₹15,000 was debited from my account…" required></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">When did this occur?</label>
+                <input id="incidentDate" class="form-input" type="date" required />
+              </div>
+              <div style="background:linear-gradient(135deg,#FEF8F0,#FEF0E0);border:1px solid rgba(201,106,69,0.2);border-radius:10px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start;">
+                <span style="font-size:18px;flex-shrink:0;">🧠</span>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--rust);margin-bottom:3px;">AI Pre-Classification Active</div>
+                  <div style="font-size:12px;color:var(--text-muted);line-height:1.6;">As you type, our NLP engine will auto-classify your complaint, assign a severity score, and route it to the correct cyber cell — saving time for both you and investigators.</div>
+                </div>
+              </div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;">Submit Complaint →</button>
+            </form>
+        </div>
+      </div>
+
+      <!-- SYSTEM STATUS -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card">
+          <div class="card-header"><div class="card-title">System Health</div></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:500;color:var(--text-secondary);">AI Classifier API</span><span class="pill pill-live" style="font-size:11px;">Online</span></div>
+              <div class="progress-track"><div class="progress-fill" style="width:94%;background:linear-gradient(90deg,var(--forest),var(--sage))"></div></div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:4px;font-family:'JetBrains Mono',monospace;">94% uptime · 38ms avg latency</div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:500;color:var(--text-secondary);">Dark Web Crawler</span><span class="pill pill-live" style="font-size:11px;">Online</span></div>
+              <div class="progress-track"><div class="progress-fill" style="width:87%;background:linear-gradient(90deg,var(--forest),var(--sage))"></div></div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:4px;font-family:'JetBrains Mono',monospace;">87% uptime · 3 active crawls</div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:500;color:var(--text-secondary);">Remediation Engine</span><span class="pill pill-warn" style="font-size:11px;">Busy</span></div>
+              <div class="progress-track"><div class="progress-fill" style="width:72%;background:linear-gradient(90deg,var(--amber),var(--gold))"></div></div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:4px;font-family:'JetBrains Mono',monospace;">72% — 3 playbooks running</div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:500;color:var(--text-secondary);">Forensics Suite</span><span class="pill pill-live" style="font-size:11px;">Online</span></div>
+              <div class="progress-track"><div class="progress-fill" style="width:99%;background:linear-gradient(90deg,var(--forest),var(--sage))"></div></div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:4px;font-family:'JetBrains Mono',monospace;">99% uptime · 1 analysis active</div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:500;color:var(--text-secondary);">SIEM / OpenSearch</span><span class="pill pill-live" style="font-size:11px;">Online</span></div>
+              <div class="progress-track"><div class="progress-fill" style="width:100%;background:linear-gradient(90deg,var(--forest),var(--sage))"></div></div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:4px;font-family:'JetBrains Mono',monospace;">100% · 4,812 events ingested</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Quick Actions</div></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-secondary" style="justify-content:flex-start;width:100%;">📋 Generate Incident Report</button>
+            <button class="btn btn-secondary" style="justify-content:flex-start;width:100%;">🔒 Force Password Reset (All)</button>
+            <button class="btn btn-secondary" style="justify-content:flex-start;width:100%;">📡 Run Threat Hunt Query</button>
+            <button class="btn btn-secondary" style="justify-content:flex-start;width:100%;">🗺 Open Geo-Threat Map</button>
+            <button class="btn btn-primary" style="justify-content:center;width:100%;">🚨 Declare Major Incident</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+</body>
+<!-- Firebase App (the core Firebase SDK) -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyCFUkuTb9PS98ZyknGxarjPrpvtra4LP1M",
+    authDomain: "cybersentinel-af5d2.firebaseapp.com",
+    databaseURL: "https://cybersentinel-af5d2-default-rtdb.firebaseio.com",
+    projectId: "cybersentinel-af5d2",
+    storageBucket: "cybersentinel-af5d2.appspot.com",
+    messagingSenderId: "595997585724",
+    appId: "1:595997585724:web:5cc6623ae49f955b206e39",
+    measurementId: "G-RYS8B86Q8C"
+  };
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const auth = firebase.auth();
+
+  // Google Sign-In Setup
+  let currentUser = null;
+
+  // Track auth state
+  auth.onAuthStateChanged((user) => {
+    currentUser = user;
+    updateAuthUI();
+  });
+
+  function updateAuthUI() {
+    const googleSignInBtn = document.getElementById('googleSignInBtn');
+    const userInfoDiv = document.getElementById('userInfoDiv');
+    const userEmailSpan = document.getElementById('userEmailSpan');
+    const userProfilePic = document.getElementById('userProfilePic');
+
+    if (currentUser) {
+      googleSignInBtn.style.display = 'none';
+      userInfoDiv.style.display = 'flex';
+      userEmailSpan.textContent = currentUser.email;
+      if (currentUser.photoURL) {
+        userProfilePic.src = currentUser.photoURL;
+      }
+      console.log('User logged in:', currentUser.email);
+    } else {
+      googleSignInBtn.style.display = 'block';
+      userInfoDiv.style.display = 'none';
+      console.log('User logged out');
+    }
+  }
+
+  // Google Sign-In Handler
+  document.getElementById('googleSignInBtn').addEventListener('click', function() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+      .then((result) => {
+        currentUser = result.user;
+        console.log('Signed in as:', currentUser.email);
+        updateAuthUI();
+      })
+      .catch((error) => {
+        console.error('Sign-in error:', error);
+        alert('Sign-in failed: ' + error.message);
+      });
+  });
+
+  // Sign Out Handler
+  document.getElementById('googleSignOutBtn').addEventListener('click', function() {
+    auth.signOut()
+      .then(() => {
+        currentUser = null;
+        console.log('Signed out');
+        updateAuthUI();
+        alert('Signed out successfully');
+      })
+      .catch((error) => {
+        console.error('Sign-out error:', error);
+      });
+  });
+
+  const complaintForm = document.getElementById('complaintForm');
+  if (complaintForm) {
+    complaintForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const name = document.getElementById('fullName').value.trim();
+      const mobile = document.getElementById('mobileNumber').value.trim();
+      const email = document.getElementById('emailAddress').value.trim();
+      const description = document.getElementById('complaintDescription').value.trim();
+      const date = document.getElementById('incidentDate').value.trim();
+
+      console.log('Submitting complaint:', { name, mobile, email, description, date });
+
+      if (!name || !mobile || !email || !description || !date) {
+        alert('Please fill in all fields.');
+        return;
+      }
+
+      db.ref('complaints').push({
+        name: name,
+        mobile: mobile,
+        email: email,
+        description: description,
+        incidentDate: date,
+        submittedAt: new Date().toISOString(),
+        submittedByUser: currentUser.email,
+        submittedByUID: currentUser.uid
+      }).then((ref) => {
+        console.log('Complaint submitted with ID:', ref.key);
+        alert('Complaint submitted successfully! Reference: ' + ref.key);
+        complaintForm.reset();
+      }).catch((error) => {
+        console.error('Firebase error:', error);
+        alert('Error submitting complaint: ' + error.message);
+      });
+    });
+  } else {
+    console.error('Complaint form not found');
+  }
+</script>
+</html>
