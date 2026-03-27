@@ -838,14 +838,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
       <button class="icon-btn">🔔 <div class="notif-dot"></div></button>
       <button class="icon-btn">⚙</button>
       <button class="icon-btn">❓</button>
-      <div id="authContainer" style="display:flex;gap:12px;align-items:center;">
-        <button id="googleSignInBtn" class="btn btn-primary btn-sm" style="padding:8px 14px;gap:6px;display:none;">🔐 Sign In with Google</button>
-        <div id="userInfoDiv" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:rgba(255,255,255,0.05);border-radius:8px;font-size:12px;">
-          <img id="userProfilePic" style="width:28px;height:28px;border-radius:50%;" />
-          <span id="userEmailSpan" style="color:rgba(255,255,255,0.7);"></span>
-          <button id="googleSignOutBtn" class="btn btn-secondary btn-sm" style="padding:6px 10px;font-size:11px;">Sign Out</button>
-        </div>
-      </div>
+      <div class="pill pill-live">SQLite Mode</div>
     </div>
   </header>
 
@@ -1354,126 +1347,77 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
 
   </div><!-- /content -->
 </div><!-- /main -->
-
-</body>
-<!-- Firebase App (the core Firebase SDK) -->
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyCFUkuTb9PS98ZyknGxarjPrpvtra4LP1M",
-    authDomain: "cybersentinel-af5d2.firebaseapp.com",
-    databaseURL: "https://cybersentinel-af5d2-default-rtdb.firebaseio.com",
-    projectId: "cybersentinel-af5d2",
-    storageBucket: "cybersentinel-af5d2.appspot.com",
-    messagingSenderId: "595997585724",
-    appId: "1:595997585724:web:5cc6623ae49f955b206e39",
-    measurementId: "G-RYS8B86Q8C"
-  };
-  // Initialize Firebase
-  const app = firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  const auth = firebase.auth();
+  const API_BASE = "http://localhost:5050/api";
 
-  // Google Sign-In Setup
-  let currentUser = null;
-
-  // Track auth state
-  auth.onAuthStateChanged((user) => {
-    currentUser = user;
-    updateAuthUI();
-  });
-
-  function updateAuthUI() {
-    const googleSignInBtn = document.getElementById('googleSignInBtn');
-    const userInfoDiv = document.getElementById('userInfoDiv');
-    const userEmailSpan = document.getElementById('userEmailSpan');
-    const userProfilePic = document.getElementById('userProfilePic');
-
-    if (currentUser) {
-      googleSignInBtn.style.display = 'none';
-      userInfoDiv.style.display = 'flex';
-      userEmailSpan.textContent = currentUser.email;
-      if (currentUser.photoURL) {
-        userProfilePic.src = currentUser.photoURL;
-      }
-      console.log('User logged in:', currentUser.email);
-    } else {
-      googleSignInBtn.style.display = 'block';
-      userInfoDiv.style.display = 'none';
-      console.log('User logged out');
+  function inferCategoryAndSeverity(description) {
+    const text = description.toLowerCase();
+    if (text.includes("otp") || text.includes("upi") || text.includes("bank")) {
+      return { category: "upi_fraud", severity: "high", confidence: 0.88 };
     }
+    if (text.includes("ransom") || text.includes("encrypt")) {
+      return { category: "ransomware", severity: "critical", confidence: 0.92 };
+    }
+    if (text.includes("phish") || text.includes("link") || text.includes("email")) {
+      return { category: "phishing", severity: "medium", confidence: 0.82 };
+    }
+    if (text.includes("identity") || text.includes("aadhaar") || text.includes("pan")) {
+      return { category: "identity_theft", severity: "high", confidence: 0.86 };
+    }
+    return { category: "other", severity: "low", confidence: 0.6 };
   }
 
-  // Google Sign-In Handler
-  document.getElementById('googleSignInBtn').addEventListener('click', function() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider)
-      .then((result) => {
-        currentUser = result.user;
-        console.log('Signed in as:', currentUser.email);
-        updateAuthUI();
-      })
-      .catch((error) => {
-        console.error('Sign-in error:', error);
-        alert('Sign-in failed: ' + error.message);
-      });
-  });
-
-  // Sign Out Handler
-  document.getElementById('googleSignOutBtn').addEventListener('click', function() {
-    auth.signOut()
-      .then(() => {
-        currentUser = null;
-        console.log('Signed out');
-        updateAuthUI();
-        alert('Signed out successfully');
-      })
-      .catch((error) => {
-        console.error('Sign-out error:', error);
-      });
-  });
-
-  const complaintForm = document.getElementById('complaintForm');
-  if (complaintForm) {
-    complaintForm.addEventListener('submit', function(e) {
+  const complaintForm = document.getElementById("complaintForm");
+  if (!complaintForm) {
+    console.error("Complaint form not found");
+  } else {
+    complaintForm.addEventListener("submit", async function (e) {
       e.preventDefault();
-      const name = document.getElementById('fullName').value.trim();
-      const mobile = document.getElementById('mobileNumber').value.trim();
-      const email = document.getElementById('emailAddress').value.trim();
-      const description = document.getElementById('complaintDescription').value.trim();
-      const date = document.getElementById('incidentDate').value.trim();
 
-      console.log('Submitting complaint:', { name, mobile, email, description, date });
+      const name = document.getElementById("fullName").value.trim();
+      const mobile = document.getElementById("mobileNumber").value.trim();
+      const email = document.getElementById("emailAddress").value.trim();
+      const description = document.getElementById("complaintDescription").value.trim();
+      const date = document.getElementById("incidentDate").value.trim();
 
       if (!name || !mobile || !email || !description || !date) {
-        alert('Please fill in all fields.');
+        alert("Please fill in all fields.");
         return;
       }
 
-      db.ref('complaints').push({
-        name: name,
-        mobile: mobile,
-        email: email,
+      const ai = inferCategoryAndSeverity(description);
+      const payload = {
+        complainant_name: name,
+        complainant_phone: mobile,
+        complainant_email: email,
         description: description,
-        incidentDate: date,
-        submittedAt: new Date().toISOString(),
-        submittedByUser: currentUser.email,
-        submittedByUID: currentUser.uid
-      }).then((ref) => {
-        console.log('Complaint submitted with ID:', ref.key);
-        alert('Complaint submitted successfully! Reference: ' + ref.key);
+        incident_date: date,
+        ai_category: ai.category,
+        ai_severity: ai.severity,
+        ai_confidence: ai.confidence
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/complaints`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Failed to submit complaint");
+        }
+
+        const reference = result.data && result.data.complaint_ref ? result.data.complaint_ref : "N/A";
+        alert(`Complaint submitted successfully. Reference: ${reference}`);
         complaintForm.reset();
-      }).catch((error) => {
-        console.error('Firebase error:', error);
-        alert('Error submitting complaint: ' + error.message);
-      });
+      } catch (error) {
+        console.error("Complaint submission failed:", error);
+        alert(`Error submitting complaint: ${error.message}`);
+      }
     });
-  } else {
-    console.error('Complaint form not found');
   }
 </script>
+</body>
 </html>
