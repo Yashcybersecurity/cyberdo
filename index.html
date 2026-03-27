@@ -17,6 +17,7 @@
   --text-primary: #2A1A12;
   --text-secondary: #5C4A3A;
   --text-muted: #9A8070;
+  --text-light: #B8A898;
   --accent: #C96A45;
   --accent-glow: rgba(201,106,69,0.25);
   --accent-gradient: linear-gradient(135deg, #C96A45, #E07B39);
@@ -298,10 +299,10 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-s
   </div>
   <div class="sidebar-section">
     <div class="sidebar-section-label">Intelligence</div>
-    <a href="#" class="nav-item active"><span class="nav-icon">⚡</span>Threat Overview<span class="nav-badge" id="nb-threats">—</span></a>
-    <a href="#" class="nav-item"><span class="nav-icon">🌐</span>Dark Web Monitor<span class="nav-badge amber">3</span></a>
-    <a href="#" class="nav-item"><span class="nav-icon">🧠</span>AI Classifier</a>
-    <a href="#" class="nav-item"><span class="nav-icon">📡</span>Threat Intel Feed<span class="nav-badge green">Live</span></a>
+    <a href="#" class="nav-item active" id="nav-overview" onclick="openThreatOverview(event)"><span class="nav-icon">⚡</span>Threat Overview<span class="nav-badge" id="nb-threats">—</span></a>
+    <a href="#" class="nav-item" id="nav-darkweb" onclick="openDarkWebMonitor(event)"><span class="nav-icon">🌐</span>Dark Web Monitor<span class="nav-badge amber" id="nb-leaks">—</span></a>
+    <a href="#" class="nav-item" id="nav-classifier" onclick="openAIClassifier(event)"><span class="nav-icon">🧠</span>AI Classifier</a>
+    <a href="#" class="nav-item" id="nav-intel" onclick="openThreatIntelFeed(event)"><span class="nav-icon">📡</span>Threat Intel Feed<span class="nav-badge green">Live</span></a>
     <div class="sidebar-section-label">Response</div>
     <a href="#" class="nav-item"><span class="nav-icon">🤖</span>Auto-Remediation</a>
     <a href="#" class="nav-item"><span class="nav-icon">🔬</span>Forensic Suite</a>
@@ -335,6 +336,7 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-s
       <input type="text" id="searchInput" placeholder="Search incidents, IOCs, reports…" oninput="doSearch(this.value)"/>
     </div>
     <div class="topbar-actions">
+      <span id="lastUpdated" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">Syncing…</span>
       <div class="pill pill-live">System Live</div>
       <button class="icon-btn">🔔<div class="notif-dot"></div></button>
       <button class="icon-btn" onclick="loadDashboard()">🔄</button>
@@ -386,12 +388,12 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-s
       <div><div class="section-title">AI-Powered Modules</div><div class="section-sub">Click any module to enter its workspace</div></div>
     </div>
     <div class="module-grid">
-      <div class="module-card"><span class="module-icon">🧠</span><div class="module-title">NLP Threat Classifier</div><div class="module-desc">Converts unstructured complaints into 80+ structured threat taxonomies using fine-tuned BERT.</div><div class="module-stat">⚡ <span>1,243</span> classified today</div></div>
-      <div class="module-card"><span class="module-icon">🌑</span><div class="module-title">Dark Web Monitor</div><div class="module-desc">Crawls Tor markets, paste sites and ransomware portals for stolen credentials and IOCs.</div><div class="module-stat">🔴 <span>3 new leaks</span> detected</div></div>
-      <div class="module-card"><span class="module-icon">🤖</span><div class="module-title">Auto-Remediation Bot</div><div class="module-desc">AI agent executes pre-authorised playbooks — isolating hosts, revoking tokens and blocking IPs autonomously.</div><div class="module-stat">🟢 <span>7 actions</span> taken today</div></div>
-      <div class="module-card"><span class="module-icon">🔮</span><div class="module-title">Predictive Forecasting</div><div class="module-desc">Time-series transformer predicts attack campaigns 6–72 hours before they surface.</div><div class="module-stat">📈 <span>2 warnings</span> issued</div></div>
-      <div class="module-card"><span class="module-icon">🔬</span><div class="module-title">Digital Forensics Suite</div><div class="module-desc">Memory forensics, PCAP analysis and disk imaging with cryptographic evidence chain.</div><div class="module-stat">🔍 <span>1 case</span> in analysis</div></div>
-      <div class="module-card"><span class="module-icon">🎓</span><div class="module-title">Awareness Engine</div><div class="module-desc">Adaptive phishing simulations and microlearning tailored to each user's risk profile.</div><div class="module-stat">👥 <span>89 users</span> enrolled</div></div>
+      <div class="module-card" data-module="classifier" onclick="openAIClassifier(event)"><span class="module-icon">🧠</span><div class="module-title">NLP Threat Classifier</div><div class="module-desc">Converts unstructured complaints into 80+ structured threat taxonomies using fine-tuned BERT.</div><div class="module-stat">⚡ <span>Real-time</span> classification</div></div>
+      <div class="module-card" data-module="darkweb" onclick="openDarkWebMonitor(event)"><span class="module-icon">🌑</span><div class="module-title">Dark Web Monitor</div><div class="module-desc">Crawls Tor markets, paste sites and ransomware portals for stolen credentials and IOCs.</div><div class="module-stat">🔴 <span id="modLeakCount">0 leaks</span> detected</div></div>
+      <div class="module-card" data-module="playbook" onclick="openPlaybookExec(event)"><span class="module-icon">🤖</span><div class="module-title">Auto-Remediation Bot</div><div class="module-desc">AI agent executes pre-authorised playbooks — isolating hosts, revoking tokens and blocking IPs autonomously.</div><div class="module-stat">🟢 <span>Execute playbooks</span> on demand</div></div>
+      <div class="module-card" data-module="forecast" onclick="openForecasting(event)"><span class="module-icon">🔮</span><div class="module-title">Predictive Forecasting</div><div class="module-desc">Time-series transformer predicts attack campaigns 6–72 hours before they surface.</div><div class="module-stat">📈 <span>Trend analysis</span> from live data</div></div>
+      <div class="module-card" data-module="forensics" onclick="openForensicsView(event)"><span class="module-icon">🔬</span><div class="module-title">Digital Forensics Suite</div><div class="module-desc">Memory forensics, PCAP analysis and disk imaging with cryptographic evidence chain.</div><div class="module-stat">🔍 <span>IOC explorer</span> ready</div></div>
+      <div class="module-card" data-module="intel" onclick="openThreatIntelFeed(event)"><span class="module-icon">🎓</span><div class="module-title">Awareness Engine</div><div class="module-desc">Adaptive phishing simulations and microlearning tailored to each user's risk profile.</div><div class="module-stat">👥 <span>Live intel</span> available</div></div>
     </div>
 
     <!-- CHART + RISK -->
@@ -486,7 +488,8 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-s
             </div>
             <div class="form-group">
               <label class="form-label">Describe What Happened *</label>
-              <textarea class="form-textarea" id="cf-desc" placeholder="Tell us in your own words — e.g. I received a call asking for my OTP and ₹15,000 was debited from my account…" required></textarea>
+              <textarea class="form-textarea" id="cf-desc" placeholder="Tell us in your own words — e.g. I received a call asking for my OTP and ₹15,000 was debited from my account…" oninput="scheduleComplaintClassification(this.value)" required></textarea>
+              <div id="cf-ai-preview" style="font-size:12px;color:var(--text-muted);margin-top:4px">AI classification preview will appear as you type.</div>
             </div>
             <div class="form-group">
               <label class="form-label">When did this occur?</label>
@@ -632,11 +635,27 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-s
   </div>
 </div>
 
+<!-- ─── INTELLIGENCE MODAL ───────────────────────────────────── -->
+<div class="modal-overlay" id="intelModal">
+  <div class="modal" style="width:760px;max-width:96vw">
+    <div class="modal-header">
+      <div class="modal-title" id="intelTitle">Intelligence Workspace</div>
+      <button class="modal-close" onclick="closeModal('intelModal')">✕</button>
+    </div>
+    <div class="modal-body" id="intelBody">
+      <div style="color:var(--text-muted);font-size:13px">Loading intelligence data…</div>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
 const API = 'http://localhost:5050';
+const DASHBOARD_REFRESH_MS = 30000;
+let complaintClassifyTimer = null;
+let complaintAiState = null;
 
 // ─── TOAST ──────────────────────────────────────────────────────
 function toast(title, msg, type='info', ref='') {
@@ -658,6 +677,29 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function openIncidentModal()  { openModal('incidentModal'); }
 function openComplaintModal() { openModal('complaintModal'); }
+
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if (!sb || !ov) return;
+  sb.classList.toggle('open');
+  ov.classList.toggle('active');
+}
+
+function setActiveNav(id) {
+  document.querySelectorAll('.sidebar .nav-item').forEach(n => n.classList.remove('active'));
+  const node = document.getElementById(id);
+  if (node) node.classList.add('active');
+}
+
+function closeSidebarOnMobile() {
+  if (window.innerWidth > 900) return;
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if (!sb || !ov) return;
+  sb.classList.remove('open');
+  ov.classList.remove('active');
+}
 
 document.querySelectorAll('.modal-overlay').forEach(m=>{
   m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); });
@@ -682,6 +724,7 @@ async function apiFetch(path, opts={}) {
 async function loadDashboard() {
   loadKPIs(); loadThreatVolume(); loadRiskScore();
   loadThreatFeed(); loadActivity(); loadIncidents(); loadHealth();
+  document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
 }
 
 async function loadKPIs() {
@@ -723,10 +766,10 @@ async function loadRiskScore() {
   const r = d.data;
   document.getElementById('riskVal').textContent = r.risk_score ?? '—';
   const items = [
-    {label:'Phishing', val:r.phishing_risk, color:'var(--terracotta)'},
-    {label:'Malware',  val:r.malware_risk,  color:'var(--amber)'},
-    {label:'Insider',  val:r.insider_risk,  color:'var(--sage)'},
-    {label:'Ransomware',val:r.ransomware_risk,color:'var(--rust)'},
+    {label:'Phishing', val:r.phishing_risk, color:'var(--accent)'},
+    {label:'Malware',  val:r.malware_risk,  color:'var(--warning)'},
+    {label:'Insider',  val:r.insider_risk,  color:'var(--success)'},
+    {label:'Ransomware',val:r.ransomware_risk,color:'var(--danger)'},
   ];
   document.getElementById('riskBreakdown').innerHTML = items.map(i=>`
     <div class="risk-row">
@@ -797,7 +840,7 @@ async function loadHealth() {
   panel.innerHTML = d.data.map(h=>{
     const pct = h.uptime_pct||0;
     const statusCls = h.status==='online'?'pill-live':h.status==='busy'?'pill-warn':'pill-idle';
-    const barColor = h.status==='busy'?'linear-gradient(90deg,var(--amber),var(--gold))':'linear-gradient(90deg,var(--forest),var(--sage))';
+    const barColor = h.status==='busy'?'linear-gradient(90deg,var(--warning),var(--accent))':'linear-gradient(90deg,var(--success),var(--info))';
     const label = h.component.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
     const sub = h.avg_latency_ms ? `${pct}% uptime · ${h.avg_latency_ms}ms avg latency` : `${pct}% — ${h.active_jobs} active jobs`;
     return `<div>
@@ -806,9 +849,185 @@ async function loadHealth() {
         <span class="pill ${statusCls}" style="font-size:11px">${h.status}</span>
       </div>
       <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <div style="font-size:11px;color:var(--text-light);margin-top:4px;font-family:'JetBrains Mono',monospace">${sub}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${sub}</div>
     </div>`;
   }).join('');
+}
+
+async function refreshIntelligenceCounts() {
+  const leaks = await apiFetch('/api/dark-web-leaks');
+  if (leaks?.success) {
+    const leakCount = leaks.data.length;
+    const badge = document.getElementById('nb-leaks');
+    const mod = document.getElementById('modLeakCount');
+    if (badge) badge.textContent = leakCount;
+    if (mod) mod.textContent = `${leakCount} leaks`;
+  }
+}
+
+function openThreatOverview(e) {
+  if (e) e.preventDefault();
+  setActiveNav('nav-overview');
+  closeSidebarOnMobile();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('Threat Overview', 'Dashboard synced with latest telemetry.', 'info');
+}
+
+async function openDarkWebMonitor(e) {
+  if (e) e.preventDefault();
+  setActiveNav('nav-darkweb');
+  closeSidebarOnMobile();
+  openModal('intelModal');
+  document.getElementById('intelTitle').textContent = 'Dark Web Monitor';
+  document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">Fetching dark web leaks…</div>';
+
+  const d = await apiFetch('/api/dark-web-leaks');
+  if (!d?.success) return;
+  const leaks = d.data || [];
+  if (!leaks.length) {
+    document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">No dark web leak records currently found.</div>';
+    return;
+  }
+  document.getElementById('intelBody').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Source</th><th>Leak Type</th><th>Severity</th><th>Records</th><th>Detected</th><th>Verified</th></tr></thead>
+        <tbody>
+          ${leaks.slice(0, 12).map(l => `
+            <tr>
+              <td>${l.source_site || '—'}</td>
+              <td>${l.leak_type || '—'}</td>
+              <td><span class="threat-badge badge-${l.severity || 'medium'}">${l.severity || 'medium'}</span></td>
+              <td class="mono">${(l.records_count || 0).toLocaleString()}</td>
+              <td class="mono">${formatDate(l.detected_at)}</td>
+              <td>${l.is_verified ? 'Yes' : 'No'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function openAIClassifier(e) {
+  if (e) e.preventDefault();
+  setActiveNav('nav-classifier');
+  closeSidebarOnMobile();
+  openModal('intelModal');
+  document.getElementById('intelTitle').textContent = 'AI Threat Classifier';
+  document.getElementById('intelBody').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">Paste suspicious text or complaint narrative</label>
+      <textarea id="intelInputText" class="form-textarea" placeholder="Example: I got a call for KYC update, shared OTP, and money was debited immediately..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="runAIClassifier()">Classify Threat</button>
+    <div id="classifierOutput" style="font-size:13px;color:var(--text-muted)">Awaiting input…</div>`;
+}
+
+async function runAIClassifier() {
+  const text = document.getElementById('intelInputText')?.value?.trim();
+  if (!text || text.length < 8) {
+    toast('Validation', 'Please enter at least 8 characters for classification.', 'error');
+    return;
+  }
+  const output = document.getElementById('classifierOutput');
+  output.innerHTML = 'Analyzing text with AI ruleset…';
+  const d = await apiFetch('/api/intelligence/classify-text', { method: 'POST', body: JSON.stringify({ text }) });
+  if (!d?.success) {
+    output.innerHTML = `<span style="color:var(--danger)">${d?.message || 'Classifier unavailable'}</span>`;
+    return;
+  }
+  const c = d.data;
+  output.innerHTML = `
+    <div class="card" style="margin-top:6px">
+      <div class="card-body" style="padding:14px 16px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <span class="threat-badge badge-${c.severity}">${c.severity}</span>
+          <strong style="font-size:14px;color:var(--text-primary)">${c.category.replace(/_/g, ' ')}</strong>
+          <span class="mono" style="font-size:12px;color:var(--text-muted)">confidence ${(c.confidence * 100).toFixed(0)}%</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Recommended Actions:</div>
+        <ul style="margin-left:18px;color:var(--text-secondary);font-size:13px;line-height:1.6">
+          ${(c.recommendations || []).map(r => `<li>${r}</li>`).join('')}
+        </ul>
+      </div>
+    </div>`;
+}
+
+async function openThreatIntelFeed(e) {
+  if (e) e.preventDefault();
+  setActiveNav('nav-intel');
+  closeSidebarOnMobile();
+  openModal('intelModal');
+  document.getElementById('intelTitle').textContent = 'Threat Intel Feed';
+  document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">Loading IOC and event feeds…</div>';
+
+  const [iocs, events] = await Promise.all([
+    apiFetch('/api/iocs'),
+    apiFetch('/api/threat-events?per_page=8')
+  ]);
+  if (!iocs?.success || !events?.success) return;
+  document.getElementById('intelBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr;gap:14px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Top IOCs</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Type</th><th>Value</th><th>Confidence</th></tr></thead>
+            <tbody>${(iocs.data || []).slice(0, 8).map(i => `<tr><td>${i.ioc_type}</td><td class="mono">${i.value}</td><td>${Math.round((i.confidence || 0) * 100)}%</td></tr>`).join('') || '<tr><td colspan="3">No IOCs available</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Latest Threat Events</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Severity</th><th>Description</th><th>Source</th></tr></thead>
+            <tbody>${(events.data.items || []).map(ev => `<tr><td><span class="threat-badge badge-${ev.severity || 'medium'}">${ev.severity || 'medium'}</span></td><td>${ev.description}</td><td>${ev.source_layer || 'unknown'}</td></tr>`).join('') || '<tr><td colspan="3">No threat events available</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function openPlaybookExec(e) {
+  if (e) e.preventDefault();
+  setActiveNav('nav-intel');
+  closeSidebarOnMobile();
+  const p = await apiFetch('/api/playbooks');
+  if (!p?.success || !p.data.length) {
+    toast('Playbooks', 'No active playbooks available to execute.', 'warning');
+    return;
+  }
+  const pb = p.data[0];
+  const run = await apiFetch(`/api/playbooks/${pb.id}/execute`, { method: 'POST', body: JSON.stringify({ triggered_by: 'dashboard' }) });
+  if (run?.success) {
+    toast('Playbook Started', `${run.data.playbook} launched (${run.data.steps} steps).`, 'success');
+  }
+}
+
+function openForecasting(e) {
+  if (e) e.preventDefault();
+  setActiveNav('nav-overview');
+  closeSidebarOnMobile();
+  document.getElementById('barChart').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast('Predictive Forecasting', 'Trend chart highlights attack pattern spikes in the last 12 hours.', 'info');
+}
+
+async function openForensicsView(e) {
+  if (e) e.preventDefault();
+  setActiveNav('nav-intel');
+  closeSidebarOnMobile();
+  const iocs = await apiFetch('/api/iocs');
+  if (!iocs?.success) return;
+  openModal('intelModal');
+  document.getElementById('intelTitle').textContent = 'Digital Forensics IOC Explorer';
+  document.getElementById('intelBody').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>IOC Type</th><th>Value</th><th>Threat Actor</th><th>Last Seen</th></tr></thead>
+        <tbody>${(iocs.data || []).slice(0, 20).map(i => `<tr><td>${i.ioc_type}</td><td class="mono">${i.value}</td><td>${i.threat_actor || 'unknown'}</td><td class="mono">${formatDate(i.last_seen)}</td></tr>`).join('') || '<tr><td colspan="4">No IOC data found</td></tr>'}</tbody>
+      </table>
+    </div>`;
 }
 
 // ─── SUBMIT COMPLAINT (inline form) ─────────────────────────────
@@ -828,6 +1047,9 @@ async function submitComplaint(e) {
     complainant_email: document.getElementById('cf-email').value.trim() || undefined,
     description:       desc,
     incident_date:     document.getElementById('cf-date').value || undefined,
+    ai_category:       complaintAiState?.category,
+    ai_severity:       complaintAiState?.severity,
+    ai_confidence:     complaintAiState?.confidence,
   };
 
   const d = await apiFetch('/api/complaints', { method:'POST', body: JSON.stringify(body) });
@@ -838,10 +1060,36 @@ async function submitComplaint(e) {
   if (d?.success) {
     toast('Complaint Registered', d.data.message, 'success', d.data.complaint_ref);
     document.getElementById('complaintForm').reset();
+    complaintAiState = null;
+    document.getElementById('cf-ai-preview').textContent = 'AI classification preview will appear as you type.';
     loadKPIs();
   } else {
     toast('Submission Failed', d?.message || 'Unknown error', 'error');
   }
+}
+
+function scheduleComplaintClassification(text) {
+  const preview = document.getElementById('cf-ai-preview');
+  if (!text || text.trim().length < 8) {
+    complaintAiState = null;
+    preview.textContent = 'AI classification preview will appear as you type.';
+    return;
+  }
+  preview.textContent = 'Analyzing complaint narrative…';
+  clearTimeout(complaintClassifyTimer);
+  complaintClassifyTimer = setTimeout(async () => {
+    const d = await apiFetch('/api/intelligence/classify-text', { method: 'POST', body: JSON.stringify({ text }) });
+    if (!d?.success) {
+      preview.textContent = 'AI preview unavailable right now.';
+      return;
+    }
+    complaintAiState = {
+      category: d.data.category,
+      severity: d.data.severity,
+      confidence: d.data.confidence,
+    };
+    preview.innerHTML = `Predicted: <strong style="color:var(--text-primary)">${d.data.category.replace(/_/g, ' ')}</strong> · <span class="threat-badge badge-${d.data.severity}">${d.data.severity}</span> · ${(d.data.confidence * 100).toFixed(0)}% confidence`;
+  }, 500);
 }
 
 // ─── SUBMIT COMPLAINT (modal) ────────────────────────────────────
@@ -938,7 +1186,8 @@ function formatDate(ts) {
 
 // ─── INIT ────────────────────────────────────────────────────────
 loadDashboard();
-setInterval(()=>{ loadThreatFeed(); loadActivity(); }, 30000);
+refreshIntelligenceCounts();
+setInterval(()=>{ loadDashboard(); refreshIntelligenceCounts(); }, DASHBOARD_REFRESH_MS);
 </script>
 </body>
 </html>

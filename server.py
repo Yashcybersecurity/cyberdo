@@ -425,6 +425,49 @@ def inc_stats(): return ok({"by_severity":qry("SELECT severity,COUNT(*) count FR
 @app.route("/api/stats/complaints")
 def comp_stats(): return ok({"by_category":qry("SELECT ai_category,COUNT(*) count FROM complaints GROUP BY ai_category"),"by_status":qry("SELECT status,COUNT(*) count FROM complaints GROUP BY status"),"total":qry("SELECT COUNT(*) count FROM complaints",one=True)["count"]})
 
+@app.route("/api/intelligence/classify-text", methods=["POST"])
+def classify_text():
+    d = request.get_json(silent=True) or {}
+    text = str(d.get("text", "")).strip().lower()
+    if len(text) < 8:
+        return err("text must be at least 8 characters")
+
+    # Lightweight, deterministic triage model for demo/dashboard use.
+    rules = [
+        ("ransomware", "critical", ["ransom", "encrypt", "locked files", "bitcoin"]),
+        ("phishing", "high", ["otp", "link", "verify", "bank", "credential", "password"]),
+        ("malware", "high", ["trojan", "malware", "virus", "payload", "keylogger"]),
+        ("financial_fraud", "high", ["upi", "credit card", "debit", "wallet", "refund scam"]),
+        ("data_exfiltration", "critical", ["data leak", "exfil", "dump", "s3", "records exposed"]),
+        ("account_takeover", "medium", ["account hacked", "login alert", "unknown login", "2fa"]),
+    ]
+
+    matched = []
+    best = ("suspicious_activity", "medium", 0.55)
+    for category, severity, keywords in rules:
+        score = sum(1 for kw in keywords if kw in text)
+        if score > 0:
+            conf = min(0.98, 0.55 + score * 0.1)
+            matched.append({"category": category, "severity": severity, "hits": score, "confidence": round(conf, 2)})
+            if conf > best[2]:
+                best = (category, severity, conf)
+
+    recommendations = {
+        "critical": ["Isolate affected endpoint", "Escalate to incident commander", "Preserve forensic artifacts"],
+        "high": ["Block suspicious IOC", "Reset impacted credentials", "Collect relevant logs"],
+        "medium": ["Monitor for repeat activity", "Notify user and helpdesk", "Add case to analyst queue"],
+        "low": ["Track and observe", "Add to baseline monitoring"],
+    }
+
+    category, severity, confidence = best
+    return ok({
+        "category": category,
+        "severity": severity,
+        "confidence": round(confidence, 2),
+        "matches": matched,
+        "recommendations": recommendations.get(severity, recommendations["low"]),
+    })
+
 if __name__ == "__main__":
     ensure_runtime_schema()
     if not os.path.exists(DB_PATH):
