@@ -838,7 +838,14 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
       <button class="icon-btn">🔔 <div class="notif-dot"></div></button>
       <button class="icon-btn">⚙</button>
       <button class="icon-btn">❓</button>
-      <div class="pill pill-live">SQLite Mode</div>
+      <div id="authGuest" style="display:flex;gap:8px;align-items:center;">
+        <button id="registerBtn" class="btn btn-secondary btn-sm">Register</button>
+        <button id="loginBtn" class="btn btn-primary btn-sm">Login</button>
+      </div>
+      <div id="authUser" style="display:none;align-items:center;gap:8px;">
+        <span id="authUserLabel" class="pill pill-live">Signed in</span>
+        <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+      </div>
     </div>
   </header>
 
@@ -862,7 +869,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
           <div class="kpi-icon danger">🚨</div>
           <div class="kpi-trend up">↑ 8</div>
         </div>
-        <div class="kpi-value">47</div>
+        <div class="kpi-value" id="kpiThreats">--</div>
         <div class="kpi-label">Active Threats</div>
         <div class="kpi-sub">12 critical · 23 high · 12 medium</div>
       </div>
@@ -871,7 +878,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
           <div class="kpi-icon warning">📂</div>
           <div class="kpi-trend neutral">→ 0</div>
         </div>
-        <div class="kpi-value">134</div>
+        <div class="kpi-value" id="kpiIncidents">--</div>
         <div class="kpi-label">Open Incidents</div>
         <div class="kpi-sub">48 assigned · 86 pending triage</div>
       </div>
@@ -880,7 +887,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
           <div class="kpi-icon success">✅</div>
           <div class="kpi-trend down">↓ 2%</div>
         </div>
-        <div class="kpi-value">98.1%</div>
+        <div class="kpi-value" id="kpiHealth">--</div>
         <div class="kpi-label">Systems Healthy</div>
         <div class="kpi-sub">3 hosts quarantined today</div>
       </div>
@@ -889,7 +896,7 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
           <div class="kpi-icon info">🧬</div>
           <div class="kpi-trend down">↑ 3.2%</div>
         </div>
-        <div class="kpi-value">4,812</div>
+        <div class="kpi-value" id="kpiEvents">--</div>
         <div class="kpi-label">Events Analysed</div>
         <div class="kpi-sub">Real-time · Last 24 hours</div>
       </div>
@@ -1296,6 +1303,13 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
               </div>
               <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;">Submit Complaint →</button>
             </form>
+            <div style="margin-top:18px;border-top:1px solid var(--border-soft);padding-top:14px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div class="card-title" style="font-size:14px;">My Recent Complaints</div>
+                <button id="refreshMyComplaintsBtn" class="btn btn-secondary btn-sm">Refresh</button>
+              </div>
+              <div id="myComplaintsList" style="font-size:12px;color:var(--text-muted);">Login to see your submissions.</div>
+            </div>
         </div>
       </div>
 
@@ -1349,6 +1363,161 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
 </div><!-- /main -->
 <script>
   const API_BASE = "http://localhost:5050/api";
+  let authToken = localStorage.getItem("cyber_token") || "";
+  let currentUser = null;
+
+  function setAuthToken(token) {
+    authToken = token || "";
+    if (authToken) {
+      localStorage.setItem("cyber_token", authToken);
+    } else {
+      localStorage.removeItem("cyber_token");
+    }
+  }
+
+  async function api(path, options = {}) {
+    const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+    if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+    const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || `Request failed: ${response.status}`);
+    }
+    return data.data;
+  }
+
+  function renderAuthState() {
+    const authGuest = document.getElementById("authGuest");
+    const authUser = document.getElementById("authUser");
+    const authUserLabel = document.getElementById("authUserLabel");
+
+    if (currentUser) {
+      authUser.style.display = "flex";
+      authGuest.style.display = "none";
+      authUserLabel.textContent = `${currentUser.full_name} (${currentUser.role})`;
+      document.getElementById("fullName").value = currentUser.full_name || "";
+      document.getElementById("emailAddress").value = currentUser.email || "";
+    } else {
+      authGuest.style.display = "flex";
+      authUser.style.display = "none";
+      authUserLabel.textContent = "Signed in";
+    }
+  }
+
+  async function restoreSession() {
+    if (!authToken) {
+      currentUser = null;
+      renderAuthState();
+      return;
+    }
+
+    try {
+      currentUser = await api("/auth/me", { method: "GET" });
+    } catch (error) {
+      setAuthToken("");
+      currentUser = null;
+    }
+    renderAuthState();
+  }
+
+  function openAuthPrompt(mode) {
+    const email = window.prompt("Email:");
+    if (!email) return;
+
+    const password = window.prompt("Password (min 8 chars):");
+    if (!password) return;
+
+    if (mode === "register") {
+      const fullName = window.prompt("Full name:");
+      if (!fullName) return;
+      registerUser(fullName, email, password);
+      return;
+    }
+    loginUser(email, password);
+  }
+
+  async function registerUser(fullName, email, password) {
+    try {
+      const data = await api("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ full_name: fullName, email, password })
+      });
+      setAuthToken(data.token);
+      currentUser = data.user;
+      renderAuthState();
+      alert(`Welcome ${data.user.full_name}. Account created.`);
+      await loadMyComplaints();
+    } catch (error) {
+      alert(`Registration failed: ${error.message}`);
+    }
+  }
+
+  async function loginUser(email, password) {
+    try {
+      const data = await api("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password })
+      });
+      setAuthToken(data.token);
+      currentUser = data.user;
+      renderAuthState();
+      alert(`Welcome back ${data.user.full_name}`);
+      await loadMyComplaints();
+    } catch (error) {
+      alert(`Login failed: ${error.message}`);
+    }
+  }
+
+  async function logoutUser() {
+    try {
+      if (authToken) {
+        await api("/auth/logout", { method: "POST" });
+      }
+    } catch (error) {
+      console.warn("Logout failed:", error.message);
+    } finally {
+      setAuthToken("");
+      currentUser = null;
+      renderAuthState();
+      await loadMyComplaints();
+    }
+  }
+
+  async function loadDashboardKpis() {
+    try {
+      const kpis = await api("/dashboard/kpis", { method: "GET" });
+      document.getElementById("kpiThreats").textContent = kpis.active_threats ?? 0;
+      document.getElementById("kpiIncidents").textContent = kpis.open_incidents ?? 0;
+      document.getElementById("kpiHealth").textContent = `${Number(kpis.systems_healthy_pct || 0).toFixed(1)}%`;
+      document.getElementById("kpiEvents").textContent = (kpis.events_analysed ?? 0).toLocaleString();
+    } catch (error) {
+      console.error("Failed to load KPI data:", error.message);
+    }
+  }
+
+  async function loadMyComplaints() {
+    const list = document.getElementById("myComplaintsList");
+    if (!currentUser || !authToken) {
+      list.textContent = "Login to see your submissions.";
+      return;
+    }
+
+    try {
+      const data = await api("/complaints?mine=1&per_page=5", { method: "GET" });
+      const items = data.items || [];
+      if (!items.length) {
+        list.textContent = "No complaints yet for this account.";
+        return;
+      }
+
+      list.innerHTML = items
+        .map((c) => `<div style=\"padding:7px 0;border-bottom:1px solid var(--border-soft);font-family:'JetBrains Mono',monospace;\">${c.complaint_ref} • ${c.status} • ${c.ai_category || "unclassified"}</div>`)
+        .join("");
+    } catch (error) {
+      list.textContent = `Unable to load complaints: ${error.message}`;
+    }
+  }
 
   function inferCategoryAndSeverity(description) {
     const text = description.toLowerCase();
@@ -1398,26 +1567,47 @@ td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(
       };
 
       try {
-        const response = await fetch(`${API_BASE}/complaints`, {
+        const data = await api("/complaints", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || "Failed to submit complaint");
-        }
-
-        const reference = result.data && result.data.complaint_ref ? result.data.complaint_ref : "N/A";
+        const reference = data && data.complaint_ref ? data.complaint_ref : "N/A";
         alert(`Complaint submitted successfully. Reference: ${reference}`);
         complaintForm.reset();
+        if (currentUser) {
+          document.getElementById("fullName").value = currentUser.full_name || "";
+          document.getElementById("emailAddress").value = currentUser.email || "";
+        }
+        await loadMyComplaints();
       } catch (error) {
         console.error("Complaint submission failed:", error);
         alert(`Error submitting complaint: ${error.message}`);
       }
     });
   }
+
+  document.getElementById("registerBtn").addEventListener("click", function () {
+    openAuthPrompt("register");
+  });
+
+  document.getElementById("loginBtn").addEventListener("click", function () {
+    openAuthPrompt("login");
+  });
+
+  document.getElementById("logoutBtn").addEventListener("click", function () {
+    logoutUser();
+  });
+
+  document.getElementById("refreshMyComplaintsBtn").addEventListener("click", function () {
+    loadMyComplaints();
+  });
+
+  (async function initPage() {
+    await restoreSession();
+    await loadDashboardKpis();
+    await loadMyComplaints();
+  })();
 </script>
 </body>
 </html>

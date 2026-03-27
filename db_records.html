@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CyberSentinel - Database Records</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--cream:#FAF7F2;--parchment:#F2EDE4;--warm-white:#FFFDF9;--sand:#E8DFD0;--sand-dark:#D4C9B6;--bark:#3D2B1F;--espresso:#2A1A12;--terracotta:#C96A45;--ember:#E07B39;--forest:#3D6B52;--danger:#C0392B;--text-primary:#2A1A12;--text-secondary:#5C4A3A;--text-muted:#9A8070;--text-light:#B8A898;--border:#D8CFC4;--border-soft:#E8E0D5;--shadow-card:0 2px 12px rgba(61,43,31,.08);--radius:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--parchment);color:var(--text-primary);min-height:100vh}
+.page{max-width:1200px;margin:0 auto;padding:24px}
+.topbar{background:var(--warm-white);border:1px solid var(--border-soft);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:var(--shadow-card);margin-bottom:18px}
+.title{font-family:'Fraunces',serif;font-size:24px;color:var(--bark)}
+.subtitle{font-size:12px;color:var(--text-muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;text-decoration:none}
+.btn-primary{background:linear-gradient(135deg,var(--terracotta),var(--ember));color:#fff}
+.btn-secondary{background:var(--warm-white);color:var(--text-secondary);border:1px solid var(--border)}
+.card{background:var(--warm-white);border:1px solid var(--border-soft);border-radius:var(--radius);box-shadow:var(--shadow-card)}
+.card-header{padding:16px 18px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.card-title{font-family:'Fraunces',serif;font-size:18px;color:var(--bark)}
+.card-sub{font-size:12px;color:var(--text-muted)}
+.card-body{padding:14px 18px 18px}
+.pill{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#E5F5EC,#D8F0E2);border:1px solid rgba(45,122,74,.2);color:var(--forest);font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.msg{font-size:13px;color:var(--text-muted);padding:12px 0}
+.table-wrap{overflow-x:auto;border:1px solid var(--border-soft);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--parchment);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+td{padding:9px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-secondary);font-family:'JetBrains Mono',monospace;font-size:11px;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--parchment)}
+.small{font-size:11px;color:var(--text-light)}
+.error{color:var(--danger)}
+@media(max-width:720px){.page{padding:14px}.title{font-size:20px}}
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div>
+        <div class="title">Database Records</div>
+        <div class="subtitle">Standalone view for SQLite data (cybersentinel.db)</div>
+      </div>
+      <div class="actions">
+        <a class="btn btn-secondary" href="/">← Back to Dashboard</a>
+        <button class="btn btn-primary" onclick="loadDbTable(activeTable)">Refresh</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title" id="tableTitle">Complaints</div>
+          <div class="card-sub">Switch tables to inspect records from backend APIs.</div>
+        </div>
+        <div class="pill" id="tableCount">-- records</div>
+      </div>
+      <div class="card-body">
+        <div class="controls">
+          <button class="btn btn-secondary" onclick="loadDbTable('complaints')">Complaints</button>
+          <button class="btn btn-secondary" onclick="loadDbTable('incidents')">Incidents</button>
+          <button class="btn btn-secondary" onclick="loadDbTable('threat_events')">Threat Events</button>
+          <button class="btn btn-secondary" onclick="loadDbTable('iocs')">IOCs</button>
+          <button class="btn btn-secondary" onclick="loadDbTable('activity')">Activity Log</button>
+        </div>
+
+        <div id="dbContent" class="msg">Loading records…</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = 'http://localhost:5050';
+let activeTable = 'complaints';
+
+async function apiFetch(path, opts={}) {
+  try {
+    const r = await fetch(API + path, {
+      headers: {'Content-Type':'application/json'},
+      ...opts
+    });
+    return await r.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function loadDbTable(name) {
+  activeTable = name;
+  const content = document.getElementById('dbContent');
+  const tableTitle = document.getElementById('tableTitle');
+  const tableCount = document.getElementById('tableCount');
+
+  tableTitle.textContent = name.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+  content.className = 'msg';
+  content.textContent = 'Loading…';
+
+  let d;
+  if (name === 'complaints') d = await apiFetch('/api/complaints?per_page=100');
+  else if (name === 'incidents') d = await apiFetch('/api/incidents?per_page=100');
+  else if (name === 'threat_events') d = await apiFetch('/api/threat-events?per_page=100');
+  else if (name === 'iocs') d = await apiFetch('/api/iocs');
+  else if (name === 'activity') d = await apiFetch('/api/activity?limit=100');
+
+  if (!d || !d.success) {
+    tableCount.textContent = 'error';
+    content.className = 'msg error';
+    content.textContent = 'Failed to load data. Ensure server.py is running on port 5050.';
+    return;
+  }
+
+  const rows = d.data.items || d.data;
+  const total = d.data.total || rows.length;
+  tableCount.textContent = `${total} records`;
+
+  if (!rows.length) {
+    content.className = 'msg';
+    content.textContent = 'No records found.';
+    return;
+  }
+
+  const cols = Object.keys(rows[0]);
+  const priorityCols = {
+    complaints: ['id','complaint_ref','complainant_name','complainant_phone','complainant_email','description','ai_category','ai_severity','status','created_at'],
+    incidents: ['id','incident_ref','title','type','severity','status','source','assigned_name','created_at'],
+    threat_events: ['id','event_type','severity','description','source_layer','source_ip','is_acknowledged','created_at'],
+    iocs: ['id','ioc_type','value','confidence','threat_actor','notes','is_active'],
+    activity: ['id','actor_label','action','entity_type','entity_id','detail','created_at']
+  };
+
+  const showCols = (priorityCols[name] || cols).filter(c => cols.includes(c));
+
+  content.innerHTML = `
+    <div class="small" style="margin-bottom:8px">Showing ${rows.length} rows</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>${showCols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr>${showCols.map(c => {
+            const v = r[c];
+            if (v === null || v === undefined) return '<td style="color:var(--text-light)">—</td>';
+            const s = String(v);
+            return `<td title="${s.replace(/"/g, '&quot;')}">${s.length > 80 ? s.substring(0, 80) + '…' : s}</td>`;
+          }).join('')}</tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+loadDbTable('complaints');
+</script>
+</body>
+</html>

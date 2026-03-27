@@ -218,7 +218,7 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-m
     <a href="#" class="nav-item"><span class="nav-icon">🎯</span>SOAR Playbooks</a>
     <div class="sidebar-section-label">Citizen Portal</div>
     <a href="#" class="nav-item" onclick="openComplaintModal()"><span class="nav-icon">💬</span>File Complaint</a>
-    <a href="#" class="nav-item" onclick="openDbViewer()"><span class="nav-icon">📁</span>View DB Records</a>
+    <a href="/db-records" class="nav-item"><span class="nav-icon">📁</span>View DB Records</a>
     <div class="sidebar-section-label">Admin</div>
     <a href="#" class="nav-item" onclick="openIncidentModal()"><span class="nav-icon">➕</span>New Incident</a>
     <a href="#" class="nav-item"><span class="nav-icon">⚙</span>Settings</a>
@@ -426,7 +426,7 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-m
           <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
             <button class="btn btn-secondary" style="justify-content:flex-start;width:100%" onclick="openIncidentModal()">➕ New Incident</button>
             <button class="btn btn-secondary" style="justify-content:flex-start;width:100%" onclick="openComplaintModal()">💬 File Complaint</button>
-            <button class="btn btn-secondary" style="justify-content:flex-start;width:100%" onclick="openDbViewer()">🗄 View Database Records</button>
+            <button class="btn btn-secondary" style="justify-content:flex-start;width:100%" onclick="window.location.href='/db-records'">🗄 View Database Records</button>
             <button class="btn btn-secondary" style="justify-content:flex-start;width:100%" onclick="loadDashboard()">🔄 Refresh Dashboard</button>
             <button class="btn btn-primary" style="justify-content:center;width:100%" onclick="alert('Major incident declaration triggered!')">🚨 Declare Major Incident</button>
           </div>
@@ -540,31 +540,6 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-m
   </div>
 </div>
 
-<!-- ─── DB VIEWER MODAL ──────────────────────────────────────── -->
-<div class="modal-overlay" id="dbModal">
-  <div class="modal" style="width:780px">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title">🗄 Database Records</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Live view of SQLite3 — cybersentinel.db</div>
-      </div>
-      <button class="modal-close" onclick="closeModal('dbModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        <button class="btn btn-secondary btn-sm" onclick="loadDbTable('complaints')">Complaints</button>
-        <button class="btn btn-secondary btn-sm" onclick="loadDbTable('incidents')">Incidents</button>
-        <button class="btn btn-secondary btn-sm" onclick="loadDbTable('threat_events')">Threat Events</button>
-        <button class="btn btn-secondary btn-sm" onclick="loadDbTable('iocs')">IOCs</button>
-        <button class="btn btn-secondary btn-sm" onclick="loadDbTable('activity')">Activity Log</button>
-      </div>
-      <div id="dbContent">
-        <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:24px">Select a table to view records</div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -591,7 +566,6 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function openIncidentModal()  { openModal('incidentModal'); }
 function openComplaintModal() { openModal('complaintModal'); }
-function openDbViewer()       { openModal('dbModal'); loadDbTable('complaints'); }
 
 document.querySelectorAll('.modal-overlay').forEach(m=>{
   m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); });
@@ -836,52 +810,6 @@ async function submitIncident() {
   } else {
     toast('Failed', d?.message||'Unknown error', 'error');
   }
-}
-
-// ─── DB VIEWER ───────────────────────────────────────────────────
-async function loadDbTable(name) {
-  const content = document.getElementById('dbContent');
-  content.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">Loading…</div>';
-
-  let d;
-  if (name === 'complaints')     d = await apiFetch('/api/complaints?per_page=50');
-  else if (name === 'incidents') d = await apiFetch('/api/incidents?per_page=50');
-  else if (name === 'threat_events') d = await apiFetch('/api/threat-events?per_page=50');
-  else if (name === 'iocs')      d = await apiFetch('/api/iocs');
-  else if (name === 'activity')  d = await apiFetch('/api/activity?limit=50');
-
-  if (!d?.success) { content.innerHTML='<div style="color:var(--danger);padding:16px">Failed to load data.</div>'; return; }
-
-  const rows = d.data.items || d.data;
-  if (!rows.length) { content.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:24px">No records found.</div>'; return; }
-
-  const cols = Object.keys(rows[0]);
-  const priorityCols = {
-    complaints:    ['id','complaint_ref','complainant_name','complainant_phone','complainant_email','description','ai_category','ai_severity','status','created_at'],
-    incidents:     ['id','incident_ref','title','type','severity','status','source','assigned_name','created_at'],
-    threat_events: ['id','event_type','severity','description','source_layer','source_ip','is_acknowledged','created_at'],
-    iocs:          ['id','ioc_type','value','confidence','threat_actor','notes','is_active'],
-    activity:      ['id','actor_label','action','entity_type','entity_id','detail','created_at'],
-  };
-  const showCols = (priorityCols[name] || cols).filter(c=>cols.includes(c));
-  const total = d.data.total || rows.length;
-
-  content.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div class="db-pill">🗄 ${name} — ${total} records</div>
-      <div style="font-size:11px;color:var(--text-muted)">Showing ${rows.length}</div>
-    </div>
-    <div style="overflow-x:auto;border:1px solid var(--border-soft);border-radius:10px">
-      <table class="db-table">
-        <thead><tr>${showCols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
-        <tbody>${rows.map(r=>`<tr>${showCols.map(c=>{
-          const v = r[c];
-          if (v===null||v===undefined) return '<td style="color:var(--text-light)">—</td>';
-          const s = String(v);
-          return `<td title="${s}">${s.length>40?s.substring(0,40)+'…':s}</td>`;
-        }).join('')}</tr>`).join('')}</tbody>
-      </table>
-    </div>`;
 }
 
 // ─── SEARCH ──────────────────────────────────────────────────────

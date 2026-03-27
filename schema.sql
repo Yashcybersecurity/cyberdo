@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     full_name     TEXT    NOT NULL,
     initials      TEXT    NOT NULL,
     email         TEXT    NOT NULL UNIQUE,
+    password_hash TEXT,
     role          TEXT    NOT NULL DEFAULT 'analyst',   -- analyst | senior_analyst | admin | viewer
     department    TEXT,
     is_active     BOOLEAN NOT NULL DEFAULT 1,
@@ -107,6 +108,7 @@ CREATE TABLE IF NOT EXISTS complaints (
     ai_category     TEXT,                              -- upi_fraud | phishing | identity_theft | ransomware | social_engineering | other
     ai_severity     TEXT,                              -- critical | high | medium | low
     ai_confidence   REAL,
+    submitted_by_user INTEGER REFERENCES users(id),
     linked_incident INTEGER REFERENCES incidents(id),
     assigned_to     INTEGER REFERENCES users(id),
     status          TEXT    NOT NULL DEFAULT 'received', -- received | triaged | investigating | resolved | closed
@@ -117,6 +119,19 @@ CREATE TABLE IF NOT EXISTS complaints (
 
 CREATE INDEX IF NOT EXISTS idx_complaints_status   ON complaints(status);
 CREATE INDEX IF NOT EXISTS idx_complaints_category ON complaints(ai_category);
+
+-- ─── AUTH SESSIONS ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token           TEXT    NOT NULL UNIQUE,
+    is_active       BOOLEAN NOT NULL DEFAULT 1,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at      DATETIME NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_token   ON auth_sessions(token);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
 
 -- ─── PLAYBOOKS / SOAR ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS playbooks (

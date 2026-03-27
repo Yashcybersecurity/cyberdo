@@ -5,19 +5,21 @@ Receives all frontend form inputs and stores them in cybersentinel.db
 Run: python3 server.py
 """
 
-import sqlite3, json, os
-from datetime import datetime
+import sqlite3, json, os, secrets
+from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, g, send_from_directory
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.path.join(BASE_DIR, "cybersentinel.db")
+AUTH_TTL_HOURS = 24
 
 app = Flask(__name__)
 
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"
-    r.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    r.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
     r.headers["Access-Control-Allow-Methods"] = "GET,POST,PATCH,OPTIONS"
     return r
 
@@ -59,10 +61,153 @@ def next_ref(table, col, prefix, yr=False):
     num = (int(row[col].split("-")[-1]) + 1) if row else 1000
     return f"{prefix}-{datetime.utcnow().year}-{num}" if yr else f"{prefix}-{num}"
 
+def ensure_runtime_schema():
+    if not os.path.exists(DB_PATH):
+        return
+
+    con = sqlite3.connect(DB_PATH)
+    con.execute("PRAGMA foreign_keys = ON")
+
+    cols_users = {r[1] for r in con.execute("PRAGMA table_info(users)").fetchall()}
+    if "password_hash" not in cols_users:
+        con.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+
+    cols_complaints = {r[1] for r in con.execute("PRAGMA table_info(complaints)").fetchall()}
+    if "submitted_by_user" not in cols_complaints:
+        con.execute("ALTER TABLE complaints ADD COLUMN submitted_by_user INTEGER")
+
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS auth_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT NOT NULL UNIQUE,
+            is_active BOOLEAN NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            expires_at DATETIME NOT NULL
+        )
+        """
+    )
+    con.execute("CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token)")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id)")
+    con.commit()
+    con.close()
+
+def get_token_from_request():
+    auth_header = request.headers.get("Authorization", "").strip()
+    if auth_header.lower().startswith("bearer "):
+        return auth_header.split(" ", 1)[1].strip()
+    return request.headers.get("X-Auth-Token", "").strip()
+
+def get_authenticated_user():
+    token = get_token_from_request()
+    if not token:
+        return None
+    return qry(
+        """
+        SELECT s.id AS session_id, s.user_id, u.full_name, u.initials, u.email, u.role, u.department
+        FROM auth_sessions s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.token = ? AND s.is_active = 1 AND s.expires_at > CURRENT_TIMESTAMP
+        """,
+        (token,),
+        one=True,
+    )
+
+def new_session(user_id):
+    token = secrets.token_urlsafe(32)
+    expires_at = (datetime.utcnow() + timedelta(hours=AUTH_TTL_HOURS)).isoformat(timespec="seconds")
+    run("INSERT INTO auth_sessions (user_id, token, expires_at) VALUES (?,?,?)", (user_id, token, expires_at))
+    return token, expires_at
+
+def initials_for(full_name):
+    parts = [p for p in (full_name or "").strip().split() if p]
+    if not parts:
+        return "US"
+    if len(parts) == 1:
+        return (parts[0][0:2]).upper()
+    return (parts[0][0] + parts[-1][0]).upper()
+
 # ── frontend ────────────────────────────────────────────────────
 @app.route("/")
 def frontend():
     return send_from_directory(BASE_DIR, "index.html")
+
+@app.route("/login")
+def login_frontend():
+    return send_from_directory(BASE_DIR, "LOGIN.html")
+
+@app.route("/db-records")
+def db_records_frontend():
+    return send_from_directory(BASE_DIR, "db_records.html")
+
+# ── auth ────────────────────────────────────────────────────────
+@app.route("/api/auth/register", methods=["POST"])
+def register():
+    d = request.get_json(silent=True) or {}
+    full_name = str(d.get("full_name", "")).strip()
+    email = str(d.get("email", "")).strip().lower()
+    password = str(d.get("password", ""))
+
+    if not full_name or not email or not password:
+        return err("full_name, email and password are required")
+    if len(password) < 8:
+        return err("Password must be at least 8 characters")
+
+    existing = qry("SELECT id FROM users WHERE lower(email)=lower(?)", (email,), one=True)
+    if existing:
+        return err("Email already registered", 409)
+
+    uid = run(
+        """
+        INSERT INTO users (full_name, initials, email, password_hash, role, department, is_active)
+        VALUES (?,?,?,?,?,?,1)
+        """,
+        (full_name, initials_for(full_name), email, generate_password_hash(password), "viewer", "Citizen Portal"),
+    )
+    token, expires_at = new_session(uid)
+    user = qry("SELECT id, full_name, initials, email, role, department FROM users WHERE id=?", (uid,), one=True)
+    return ok({"token": token, "expires_at": expires_at, "user": user}, "Registered", 201)
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    d = request.get_json(silent=True) or {}
+    email = str(d.get("email", "")).strip().lower()
+    password = str(d.get("password", ""))
+    if not email or not password:
+        return err("email and password are required")
+
+    user = qry(
+        "SELECT id, full_name, initials, email, role, department, password_hash, is_active FROM users WHERE lower(email)=lower(?)",
+        (email,),
+        one=True,
+    )
+    if not user or not user.get("password_hash"):
+        return err("Invalid credentials", 401)
+    if not user.get("is_active"):
+        return err("User disabled", 403)
+    if not check_password_hash(user["password_hash"], password):
+        return err("Invalid credentials", 401)
+
+    run("UPDATE users SET last_login=CURRENT_TIMESTAMP WHERE id=?", (user["id"],))
+    token, expires_at = new_session(user["id"])
+    safe_user = {k: user[k] for k in ("id", "full_name", "initials", "email", "role", "department")}
+    return ok({"token": token, "expires_at": expires_at, "user": safe_user}, "Logged in")
+
+@app.route("/api/auth/me", methods=["GET"])
+def auth_me():
+    user = get_authenticated_user()
+    if not user:
+        return err("Unauthorized", 401)
+    return ok({"id": user["user_id"], "full_name": user["full_name"], "initials": user["initials"], "email": user["email"], "role": user["role"], "department": user["department"]})
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+    token = get_token_from_request()
+    if not token:
+        return err("Unauthorized", 401)
+    run("UPDATE auth_sessions SET is_active=0 WHERE token=?", (token,))
+    return ok(None, "Logged out")
 
 # ── health ──────────────────────────────────────────────────────
 @app.route("/api/health")
@@ -180,8 +325,15 @@ def create_leak():
 @app.route("/api/complaints", methods=["GET"])
 def list_comp():
     st=request.args.get("status"); cat=request.args.get("category")
+    mine = request.args.get("mine") == "1"
     pg=max(1,int(request.args.get("page",1))); pp=min(100,int(request.args.get("per_page",20)))
     sql,p="SELECT * FROM complaints WHERE 1=1",[]
+    if mine:
+        user = get_authenticated_user()
+        if not user:
+            return err("Unauthorized", 401)
+        sql += " AND submitted_by_user=?"
+        p.append(user["user_id"])
     if st:  sql+=" AND status=?";      p.append(st)
     if cat: sql+=" AND ai_category=?"; p.append(cat)
     rows=qry(sql+" ORDER BY created_at DESC",p); total=len(rows)
@@ -200,9 +352,11 @@ def create_comp():
     miss=[f for f in ("complainant_name","description") if not str(d.get(f,"")).strip()]
     if miss: return err(f"Missing: {', '.join(miss)}")
     if len(d["description"].strip())<10: return err("Description too short")
+    user = get_authenticated_user()
+    submitted_by = user["user_id"] if user else None
     ref=next_ref("complaints","complaint_ref","CNF",yr=True)
-    cid=run("INSERT INTO complaints (complaint_ref,complainant_name,complainant_phone,complainant_email,description,incident_date,ai_category,ai_severity,ai_confidence,status) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (ref,d["complainant_name"].strip(),d.get("complainant_phone","").strip() or None,d.get("complainant_email","").strip() or None,d["description"].strip(),d.get("incident_date") or None,d.get("ai_category") or None,d.get("ai_severity") or None,d.get("ai_confidence") or None,"received"))
+    cid=run("INSERT INTO complaints (complaint_ref,complainant_name,complainant_phone,complainant_email,description,incident_date,ai_category,ai_severity,ai_confidence,submitted_by_user,status) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (ref,d["complainant_name"].strip(),d.get("complainant_phone","").strip() or None,d.get("complainant_email","").strip() or None,d["description"].strip(),d.get("incident_date") or None,d.get("ai_category") or None,d.get("ai_severity") or None,d.get("ai_confidence") or None,submitted_by,"received"))
     log(d["complainant_name"].strip(),"submit_complaint","complaint",cid,f"{ref} — {d.get('ai_category','unclassified')}")
     return ok({"id":cid,"complaint_ref":ref,"status":"received","message":f"Registered as {ref}. We will contact you shortly."},"Complaint submitted",201)
 
@@ -272,6 +426,7 @@ def inc_stats(): return ok({"by_severity":qry("SELECT severity,COUNT(*) count FR
 def comp_stats(): return ok({"by_category":qry("SELECT ai_category,COUNT(*) count FROM complaints GROUP BY ai_category"),"by_status":qry("SELECT status,COUNT(*) count FROM complaints GROUP BY status"),"total":qry("SELECT COUNT(*) count FROM complaints",one=True)["count"]})
 
 if __name__ == "__main__":
+    ensure_runtime_schema()
     if not os.path.exists(DB_PATH):
         print(f"⚠  DB not found. Run: python3 init_db.py")
     else:

@@ -1,0 +1,19 @@
+* text=auto eol=lf
+
+# Ensure scripts/config stay as text
+*.py text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+
+# Treat databases and binaries as binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
