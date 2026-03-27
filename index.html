@@ -164,6 +164,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg-app);color:v
 .badge-high{background:var(--accent-glow);color:var(--accent);border:1px solid rgba(201,106,69,0.3)}
 .badge-medium{background:var(--warning-bg);color:var(--warning);border:1px solid rgba(245,158,11,0.2)}
 .badge-low{background:var(--success-bg);color:var(--success);border:1px solid rgba(16,185,129,0.2)}
+.badge-info{background:var(--info-bg);color:var(--info);border:1px solid rgba(46,110,138,0.25)}
 .badge-open{background:var(--warning-bg);color:var(--warning);border:1px solid rgba(245,158,11,0.2)}
 .badge-resolved{background:var(--success-bg);color:var(--success);border:1px solid rgba(16,185,129,0.2)}
 
@@ -855,9 +856,9 @@ async function loadHealth() {
 }
 
 async function refreshIntelligenceCounts() {
-  const leaks = await apiFetch('/api/dark-web-leaks');
-  if (leaks?.success) {
-    const leakCount = leaks.data.length;
+  const intel = await apiFetch('/api/intelligence/dark-web-monitor');
+  if (intel?.success) {
+    const leakCount = intel.data.summary.total_leaks || 0;
     const badge = document.getElementById('nb-leaks');
     const mod = document.getElementById('modLeakCount');
     if (badge) badge.textContent = leakCount;
@@ -879,16 +880,29 @@ async function openDarkWebMonitor(e) {
   closeSidebarOnMobile();
   openModal('intelModal');
   document.getElementById('intelTitle').textContent = 'Dark Web Monitor';
-  document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">Fetching dark web leaks…</div>';
+  document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">Fetching dark web intelligence…</div>';
 
-  const d = await apiFetch('/api/dark-web-leaks');
+  const d = await apiFetch('/api/intelligence/dark-web-monitor');
   if (!d?.success) return;
-  const leaks = d.data || [];
+  const leaks = d.data.recent || [];
+  const s = d.data.summary || {};
+  const byType = d.data.by_type || [];
+  const bySeverity = d.data.by_severity || [];
   if (!leaks.length) {
     document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">No dark web leak records currently found.</div>';
     return;
   }
   document.getElementById('intelBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px;margin-bottom:14px">
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Total Leaks</div><div style="font-size:22px;font-weight:700">${s.total_leaks || 0}</div></div></div>
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Verified</div><div style="font-size:22px;font-weight:700">${s.verified_leaks || 0}</div></div></div>
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Critical/High</div><div style="font-size:22px;font-weight:700">${s.critical_or_high || 0}</div></div></div>
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Records Exposed</div><div style="font-size:18px;font-weight:700">${(s.total_records || 0).toLocaleString()}</div></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">Leak Types</div>${byType.map(x=>`<div style="display:flex;justify-content:space-between;font-size:12px"><span>${x.leak_type}</span><strong>${x.count}</strong></div>`).join('') || '<div style="font-size:12px;color:var(--text-muted)">No data</div>'}</div></div>
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">Severity Mix</div>${bySeverity.map(x=>`<div style="display:flex;justify-content:space-between;font-size:12px"><span>${x.severity}</span><strong>${x.count}</strong></div>`).join('') || '<div style="font-size:12px;color:var(--text-muted)">No data</div>'}</div></div>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Source</th><th>Leak Type</th><th>Severity</th><th>Records</th><th>Detected</th><th>Verified</th></tr></thead>
@@ -949,6 +963,10 @@ async function runAIClassifier() {
         <ul style="margin-left:18px;color:var(--text-secondary);font-size:13px;line-height:1.6">
           ${(c.recommendations || []).map(r => `<li>${r}</li>`).join('')}
         </ul>
+        <div style="font-size:12px;color:var(--text-secondary);margin:8px 0 4px">Extracted Indicators:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${(c.extracted_iocs || []).slice(0, 8).map(i => `<span class="threat-badge badge-info">${i.type}: ${i.value}</span>`).join('') || '<span style="font-size:12px;color:var(--text-muted)">No direct IOC found in text.</span>'}
+        </div>
       </div>
     </div>`;
 }
@@ -959,21 +977,35 @@ async function openThreatIntelFeed(e) {
   closeSidebarOnMobile();
   openModal('intelModal');
   document.getElementById('intelTitle').textContent = 'Threat Intel Feed';
-  document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">Loading IOC and event feeds…</div>';
+  document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">Loading fused threat-intel feed…</div>';
 
-  const [iocs, events] = await Promise.all([
-    apiFetch('/api/iocs'),
-    apiFetch('/api/threat-events?per_page=8')
-  ]);
-  if (!iocs?.success || !events?.success) return;
+  const intel = await apiFetch('/api/intelligence/threat-feed?limit=12');
+  if (!intel?.success) return;
+  const topSources = intel.data.top_sources || [];
+  const iocSnap = intel.data.ioc_snapshot || [];
+  const events = intel.data.events || [];
   document.getElementById('intelBody').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr;gap:14px">
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:10px">
+        <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Live Events</div><div style="font-size:22px;font-weight:700">${events.length}</div></div></div>
+        <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Unacknowledged</div><div style="font-size:22px;font-weight:700">${intel.data.unacknowledged_count || 0}</div></div></div>
+        <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Active IOC Types</div><div style="font-size:22px;font-weight:700">${iocSnap.length}</div></div></div>
+      </div>
       <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Top IOCs</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px">IOC Snapshot</div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Type</th><th>Value</th><th>Confidence</th></tr></thead>
-            <tbody>${(iocs.data || []).slice(0, 8).map(i => `<tr><td>${i.ioc_type}</td><td class="mono">${i.value}</td><td>${Math.round((i.confidence || 0) * 100)}%</td></tr>`).join('') || '<tr><td colspan="3">No IOCs available</td></tr>'}</tbody>
+            <thead><tr><th>IOC Type</th><th>Count</th></tr></thead>
+            <tbody>${iocSnap.map(i => `<tr><td>${i.ioc_type}</td><td>${i.count}</td></tr>`).join('') || '<tr><td colspan="2">No IOCs available</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Top Source Layers</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Source Layer</th><th>Events</th></tr></thead>
+            <tbody>${topSources.map(s => `<tr><td>${s.source_layer}</td><td>${s.count}</td></tr>`).join('') || '<tr><td colspan="2">No source data</td></tr>'}</tbody>
           </table>
         </div>
       </div>
@@ -981,8 +1013,8 @@ async function openThreatIntelFeed(e) {
         <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Latest Threat Events</div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Severity</th><th>Description</th><th>Source</th></tr></thead>
-            <tbody>${(events.data.items || []).map(ev => `<tr><td><span class="threat-badge badge-${ev.severity || 'medium'}">${ev.severity || 'medium'}</span></td><td>${ev.description}</td><td>${ev.source_layer || 'unknown'}</td></tr>`).join('') || '<tr><td colspan="3">No threat events available</td></tr>'}</tbody>
+            <thead><tr><th>Severity</th><th>Description</th><th>Source</th><th>Incident</th></tr></thead>
+            <tbody>${events.map(ev => `<tr><td><span class="threat-badge badge-${ev.severity || 'medium'}">${ev.severity || 'medium'}</span></td><td>${ev.description}</td><td>${ev.source_layer || 'unknown'}</td><td>${ev.incident_ref || '—'}</td></tr>`).join('') || '<tr><td colspan="4">No threat events available</td></tr>'}</tbody>
           </table>
         </div>
       </div>
@@ -993,39 +1025,83 @@ async function openPlaybookExec(e) {
   if (e) e.preventDefault();
   setActiveNav('nav-intel');
   closeSidebarOnMobile();
-  const p = await apiFetch('/api/playbooks');
-  if (!p?.success || !p.data.length) {
-    toast('Playbooks', 'No active playbooks available to execute.', 'warning');
+  const rec = await apiFetch('/api/intelligence/playbooks/recommend?incident_severity=high');
+  if (!rec?.success || !(rec.data.recommended || []).length) {
+    toast('Playbooks', 'No recommended playbooks available.', 'warning');
     return;
   }
-  const pb = p.data[0];
-  const run = await apiFetch(`/api/playbooks/${pb.id}/execute`, { method: 'POST', body: JSON.stringify({ triggered_by: 'dashboard' }) });
-  if (run?.success) {
-    toast('Playbook Started', `${run.data.playbook} launched (${run.data.steps} steps).`, 'success');
-  }
+  openModal('intelModal');
+  document.getElementById('intelTitle').textContent = 'Auto-Remediation Playbooks';
+  document.getElementById('intelBody').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${(rec.data.recommended || []).map(pb => `
+        <div class="card">
+          <div class="card-body" style="padding:12px 14px">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+              <div>
+                <div style="font-size:14px;font-weight:700">${pb.name}</div>
+                <div style="font-size:12px;color:var(--text-muted)">${pb.description || 'No description'}</div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Relevance ${pb.relevance_score || 0} · min severity ${pb.severity_min || 'medium'}</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="executePlaybookById(${pb.id})">Execute</button>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
 }
 
-function openForecasting(e) {
+async function executePlaybookById(playbookId) {
+  const run = await apiFetch(`/api/playbooks/${playbookId}/execute`, { method: 'POST', body: JSON.stringify({ triggered_by: 'dashboard' }) });
+  if (run?.success) toast('Playbook Started', `${run.data.playbook} launched (${run.data.steps} steps).`, 'success');
+}
+
+async function openForecasting(e) {
   if (e) e.preventDefault();
   setActiveNav('nav-overview');
   closeSidebarOnMobile();
-  document.getElementById('barChart').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  toast('Predictive Forecasting', 'Trend chart highlights attack pattern spikes in the last 12 hours.', 'info');
+  openModal('intelModal');
+  document.getElementById('intelTitle').textContent = 'Predictive Forecasting';
+  document.getElementById('intelBody').innerHTML = '<div style="color:var(--text-muted);font-size:13px">Calculating forecast from historical telemetry…</div>';
+  const f = await apiFetch('/api/intelligence/forecast');
+  if (!f?.success) return;
+  document.getElementById('intelBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:10px;margin-bottom:14px">
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Trend</div><div style="font-size:20px;font-weight:700;text-transform:capitalize">${f.data.trend}</div></div></div>
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Average Load</div><div style="font-size:20px;font-weight:700">${f.data.avg_load}</div></div></div>
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Slope / hour</div><div style="font-size:20px;font-weight:700">${f.data.slope}</div></div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Projection Step</th><th>Predicted Total Events</th></tr></thead>
+        <tbody>${(f.data.projection || []).map(p => `<tr><td>+${p.step} hour</td><td>${p.predicted_total}</td></tr>`).join('') || '<tr><td colspan="2">No projection available</td></tr>'}</tbody>
+      </table>
+    </div>`;
 }
 
 async function openForensicsView(e) {
   if (e) e.preventDefault();
   setActiveNav('nav-intel');
   closeSidebarOnMobile();
-  const iocs = await apiFetch('/api/iocs');
-  if (!iocs?.success) return;
+  const fx = await apiFetch('/api/intelligence/forensics');
+  if (!fx?.success) return;
   openModal('intelModal');
   document.getElementById('intelTitle').textContent = 'Digital Forensics IOC Explorer';
   document.getElementById('intelBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:10px;margin-bottom:14px">
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Active IOCs</div><div style="font-size:22px;font-weight:700">${fx.data.active_ioc_count || 0}</div></div></div>
+      <div class="card"><div class="card-body" style="padding:10px 12px"><div style="font-size:11px;color:var(--text-muted)">Focus Incidents</div><div style="font-size:22px;font-weight:700">${(fx.data.focus_incidents || []).length}</div></div></div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:12px">
+      <table>
+        <thead><tr><th>IOC Type</th><th>Value</th><th>Severity</th><th>Risk Score</th><th>Last Seen</th></tr></thead>
+        <tbody>${(fx.data.hot_iocs || []).slice(0, 20).map(i => `<tr><td>${i.ioc_type}</td><td class="mono">${i.value}</td><td><span class="threat-badge badge-${i.incident_severity || 'low'}">${i.incident_severity || 'n/a'}</span></td><td>${i.risk_score}</td><td class="mono">${formatDate(i.last_seen)}</td></tr>`).join('') || '<tr><td colspan="5">No IOC data found</td></tr>'}</tbody>
+      </table>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>IOC Type</th><th>Value</th><th>Threat Actor</th><th>Last Seen</th></tr></thead>
-        <tbody>${(iocs.data || []).slice(0, 20).map(i => `<tr><td>${i.ioc_type}</td><td class="mono">${i.value}</td><td>${i.threat_actor || 'unknown'}</td><td class="mono">${formatDate(i.last_seen)}</td></tr>`).join('') || '<tr><td colspan="4">No IOC data found</td></tr>'}</tbody>
+        <thead><tr><th>Incident</th><th>Type</th><th>Severity</th><th>Status</th><th>Host</th></tr></thead>
+        <tbody>${(fx.data.focus_incidents || []).map(i => `<tr><td class="mono">${i.incident_ref}</td><td>${i.type}</td><td><span class="threat-badge badge-${i.severity || 'medium'}">${i.severity || 'medium'}</span></td><td>${i.status}</td><td>${i.affected_host || '—'}</td></tr>`).join('') || '<tr><td colspan="5">No active incidents found</td></tr>'}</tbody>
       </table>
     </div>`;
 }

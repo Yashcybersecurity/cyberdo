@@ -5,7 +5,7 @@ Receives all frontend form inputs and stores them in cybersentinel.db
 Run: python3 server.py
 """
 
-import sqlite3, json, os, secrets
+import sqlite3, json, os, re, secrets
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, g, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -127,6 +127,20 @@ def initials_for(full_name):
     if len(parts) == 1:
         return (parts[0][0:2]).upper()
     return (parts[0][0] + parts[-1][0]).upper()
+
+SEVERITY_ORDER = {
+    "info": 1,
+    "low": 2,
+    "medium": 3,
+    "high": 4,
+    "critical": 5,
+}
+
+def severity_value(level):
+    return SEVERITY_ORDER.get((level or "").lower(), 0)
+
+def severity_at_least(level, minimum):
+    return severity_value(level) >= severity_value(minimum)
 
 # ── frontend ────────────────────────────────────────────────────
 @app.route("/")
@@ -432,25 +446,86 @@ def classify_text():
     if len(text) < 8:
         return err("text must be at least 8 characters")
 
-    # Lightweight, deterministic triage model for demo/dashboard use.
-    rules = [
-        ("ransomware", "critical", ["ransom", "encrypt", "locked files", "bitcoin"]),
-        ("phishing", "high", ["otp", "link", "verify", "bank", "credential", "password"]),
-        ("malware", "high", ["trojan", "malware", "virus", "payload", "keylogger"]),
-        ("financial_fraud", "high", ["upi", "credit card", "debit", "wallet", "refund scam"]),
-        ("data_exfiltration", "critical", ["data leak", "exfil", "dump", "s3", "records exposed"]),
-        ("account_takeover", "medium", ["account hacked", "login alert", "unknown login", "2fa"]),
-    ]
+    model = {
+        "ransomware": {
+            "severity": "critical",
+            "signals": {"ransom": 3, "decrypt": 2, "encrypted": 3, "bitcoin": 2, "extortion": 3, "locked": 2},
+        },
+        "phishing": {
+            "severity": "high",
+            "signals": {"otp": 3, "verify": 2, "suspended": 2, "click": 1, "credential": 2, "password": 2, "bank": 2},
+        },
+        "malware": {
+            "severity": "high",
+            "signals": {"trojan": 3, "malware": 3, "payload": 2, "keylogger": 3, "virus": 2, "exe": 1},
+        },
+        "financial_fraud": {
+            "severity": "high",
+            "signals": {"upi": 3, "debit": 2, "credit card": 2, "wallet": 2, "refund scam": 3, "transaction": 2},
+        },
+        "data_exfiltration": {
+            "severity": "critical",
+            "signals": {"data leak": 3, "exfil": 3, "dump": 2, "records exposed": 3, "unauthorized download": 2},
+        },
+        "account_takeover": {
+            "severity": "medium",
+            "signals": {"unknown login": 3, "2fa": 2, "account hacked": 3, "session hijack": 3, "reset link": 2},
+        },
+    }
 
-    matched = []
-    best = ("suspicious_activity", "medium", 0.55)
-    for category, severity, keywords in rules:
-        score = sum(1 for kw in keywords if kw in text)
+    ip_hits = re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", text)
+    domain_hits = re.findall(r"\b[a-z0-9.-]+\.(?:com|net|org|io|co|in|ru|cn|biz|xyz)\b", text)
+    url_hits = re.findall(r"https?://[^\s]+", text)
+    email_hits = re.findall(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", text)
+    cve_hits = re.findall(r"cve-\d{4}-\d{4,7}", text)
+    sha_hits = re.findall(r"\b[a-f0-9]{32,64}\b", text)
+
+    extracted_iocs = []
+    extracted_iocs.extend({"type": "ip", "value": v} for v in ip_hits[:5])
+    extracted_iocs.extend({"type": "domain", "value": v} for v in domain_hits[:5])
+    extracted_iocs.extend({"type": "url", "value": v} for v in url_hits[:5])
+    extracted_iocs.extend({"type": "email", "value": v} for v in email_hits[:5])
+    extracted_iocs.extend({"type": "cve", "value": v.upper()} for v in cve_hits[:5])
+    extracted_iocs.extend({"type": "hash", "value": v} for v in sha_hits[:5])
+
+    scored = []
+    for category, cfg in model.items():
+        score = 0
+        matched_signals = []
+        for signal, weight in cfg["signals"].items():
+            if signal in text:
+                score += weight
+                matched_signals.append(signal)
         if score > 0:
-            conf = min(0.98, 0.55 + score * 0.1)
-            matched.append({"category": category, "severity": severity, "hits": score, "confidence": round(conf, 2)})
-            if conf > best[2]:
-                best = (category, severity, conf)
+            scored.append({
+                "category": category,
+                "severity": cfg["severity"],
+                "score": score,
+                "matched_signals": matched_signals,
+            })
+
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    if scored:
+        best = scored[0]
+        category = best["category"]
+        severity = best["severity"]
+        raw_conf = 0.45 + (best["score"] * 0.06) + (min(len(extracted_iocs), 4) * 0.03)
+        confidence = min(0.99, raw_conf)
+    else:
+        category = "suspicious_activity"
+        severity = "medium"
+        confidence = 0.52 if extracted_iocs else 0.45
+
+    matched = [
+        {
+            "category": s["category"],
+            "severity": s["severity"],
+            "score": s["score"],
+            "matched_signals": s["matched_signals"],
+            "confidence": round(min(0.98, 0.42 + s["score"] * 0.06), 2),
+        }
+        for s in scored[:4]
+    ]
 
     recommendations = {
         "critical": ["Isolate affected endpoint", "Escalate to incident commander", "Preserve forensic artifacts"],
@@ -459,13 +534,189 @@ def classify_text():
         "low": ["Track and observe", "Add to baseline monitoring"],
     }
 
-    category, severity, confidence = best
     return ok({
         "category": category,
         "severity": severity,
         "confidence": round(confidence, 2),
         "matches": matched,
+        "extracted_iocs": extracted_iocs[:12],
         "recommendations": recommendations.get(severity, recommendations["low"]),
+    })
+
+@app.route("/api/intelligence/dark-web-monitor", methods=["GET"])
+def intel_dark_web_monitor():
+    summary = {
+        "total_leaks": qry("SELECT COUNT(*) c FROM dark_web_leaks", one=True)["c"],
+        "verified_leaks": qry("SELECT COUNT(*) c FROM dark_web_leaks WHERE is_verified=1", one=True)["c"],
+        "total_records": qry("SELECT COALESCE(SUM(records_count),0) c FROM dark_web_leaks", one=True)["c"],
+        "critical_or_high": qry("SELECT COUNT(*) c FROM dark_web_leaks WHERE severity IN ('critical','high')", one=True)["c"],
+    }
+    by_type = qry("SELECT leak_type, COUNT(*) count FROM dark_web_leaks GROUP BY leak_type ORDER BY count DESC")
+    by_severity = qry("SELECT severity, COUNT(*) count FROM dark_web_leaks GROUP BY severity")
+    recent = qry("SELECT * FROM dark_web_leaks ORDER BY detected_at DESC LIMIT 25")
+    return ok({"summary": summary, "by_type": by_type, "by_severity": by_severity, "recent": recent})
+
+@app.route("/api/intelligence/threat-feed", methods=["GET"])
+def intel_threat_feed():
+    limit = min(50, max(5, int(request.args.get("limit", 12))))
+    events = qry(
+        """
+        SELECT te.*, i.incident_ref, i.type incident_type
+        FROM threat_events te
+        LEFT JOIN incidents i ON i.id = te.incident_id
+        ORDER BY te.created_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    unacked = qry("SELECT COUNT(*) c FROM threat_events WHERE is_acknowledged=0", one=True)["c"]
+    top_sources = qry(
+        """
+        SELECT COALESCE(source_layer,'unknown') source_layer, COUNT(*) count
+        FROM threat_events
+        GROUP BY COALESCE(source_layer,'unknown')
+        ORDER BY count DESC
+        LIMIT 8
+        """
+    )
+    ioc_snapshot = qry(
+        "SELECT ioc_type, COUNT(*) count FROM iocs WHERE is_active=1 GROUP BY ioc_type ORDER BY count DESC"
+    )
+    return ok({
+        "events": events,
+        "unacknowledged_count": unacked,
+        "top_sources": top_sources,
+        "ioc_snapshot": ioc_snapshot,
+    })
+
+@app.route("/api/intelligence/forecast", methods=["GET"])
+def intel_forecast():
+    rows = qry(
+        """
+        SELECT hour_label, hour_value, critical_high, medium, low, recorded_date
+        FROM threat_volume_hourly
+        ORDER BY recorded_date DESC, hour_value DESC
+        LIMIT 24
+        """
+    )
+    if not rows:
+        return ok({"history": [], "projection": [], "trend": "stable", "avg_load": 0})
+
+    rows = list(reversed(rows))
+    history = []
+    for r in rows:
+        total = (r.get("critical_high") or 0) + (r.get("medium") or 0) + (r.get("low") or 0)
+        history.append({
+            "hour_label": r.get("hour_label"),
+            "hour_value": r.get("hour_value"),
+            "total": total,
+            "critical_high": r.get("critical_high") or 0,
+            "medium": r.get("medium") or 0,
+            "low": r.get("low") or 0,
+        })
+
+    n = len(history)
+    first = history[0]["total"]
+    last = history[-1]["total"]
+    slope = (last - first) / max(1, n - 1)
+    avg_load = round(sum(h["total"] for h in history) / max(1, n), 2)
+
+    projection = []
+    base = last
+    for i in range(1, 4):
+        pred = max(0, round(base + slope * i))
+        projection.append({"step": i, "predicted_total": pred})
+
+    if slope > 2:
+        trend = "rising"
+    elif slope < -2:
+        trend = "falling"
+    else:
+        trend = "stable"
+
+    return ok({
+        "history": history[-12:],
+        "projection": projection,
+        "trend": trend,
+        "avg_load": avg_load,
+        "slope": round(slope, 2),
+    })
+
+@app.route("/api/intelligence/forensics", methods=["GET"])
+def intel_forensics():
+    focus_incidents = qry(
+        """
+        SELECT id, incident_ref, title, type, severity, status, source_ip, dest_ip, affected_host, created_at
+        FROM incidents
+        WHERE status NOT IN ('resolved','closed')
+        ORDER BY CASE severity
+            WHEN 'critical' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'medium' THEN 3
+            WHEN 'low' THEN 4
+            ELSE 5 END,
+            created_at DESC
+        LIMIT 10
+        """
+    )
+
+    hot_iocs = qry(
+        """
+        SELECT i.*, inc.incident_ref, inc.severity incident_severity
+        FROM iocs i
+        LEFT JOIN incidents inc ON inc.id = i.incident_id
+        WHERE i.is_active=1
+        ORDER BY i.confidence DESC, i.last_seen DESC
+        LIMIT 20
+        """
+    )
+
+    for ioc in hot_iocs:
+        recency_bonus = 10 if (ioc.get("last_seen") or "")[:10] == datetime.utcnow().date().isoformat() else 0
+        confidence_score = int((ioc.get("confidence") or 0) * 100)
+        sev_bonus = 8 if severity_at_least(ioc.get("incident_severity"), "high") else 0
+        ioc["risk_score"] = min(100, confidence_score + recency_bonus + sev_bonus)
+
+    return ok({
+        "focus_incidents": focus_incidents,
+        "hot_iocs": hot_iocs,
+        "active_ioc_count": qry("SELECT COUNT(*) c FROM iocs WHERE is_active=1", one=True)["c"],
+    })
+
+@app.route("/api/intelligence/playbooks/recommend", methods=["GET"])
+def intel_playbook_recommend():
+    incident_id = request.args.get("incident_id")
+    incident_type = request.args.get("incident_type")
+    incident_severity = request.args.get("incident_severity")
+
+    if incident_id:
+        inc = qry("SELECT type, severity FROM incidents WHERE id=?", (incident_id,), one=True)
+        if not inc:
+            return err("Incident not found", 404)
+        incident_type = incident_type or inc.get("type")
+        incident_severity = incident_severity or inc.get("severity")
+
+    rows = qry("SELECT id, name, description, threat_type, severity_min, trigger_type FROM playbooks WHERE is_active=1")
+    scored = []
+    for pb in rows:
+        score = 0
+        if incident_type and pb.get("threat_type") and pb["threat_type"] == incident_type:
+            score += 50
+        if incident_type and not pb.get("threat_type"):
+            score += 20
+        if incident_severity and severity_at_least(incident_severity, pb.get("severity_min") or "medium"):
+            score += 30
+        if pb.get("trigger_type") == "auto":
+            score += 5
+        if score > 0 or (not incident_type and not incident_severity):
+            pb["relevance_score"] = score
+            scored.append(pb)
+
+    scored.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
+    return ok({
+        "incident_type": incident_type,
+        "incident_severity": incident_severity,
+        "recommended": scored[:10],
     })
 
 if __name__ == "__main__":
